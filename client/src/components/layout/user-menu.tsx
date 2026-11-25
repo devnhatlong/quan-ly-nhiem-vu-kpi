@@ -1,0 +1,101 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Lock, LogOut, UserRound } from "lucide-react";
+import { toast } from "sonner";
+
+import { useAuth } from "@/features/auth/auth-provider";
+import {
+  displayNameOf,
+  initialsOf,
+  primaryRoleLabel,
+} from "@/features/auth/types";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+export function UserMenu() {
+  const router = useRouter();
+  const { user, logout } = useAuth();
+
+  const name = user ? displayNameOf(user) : "Người dùng";
+  const role = user ? primaryRoleLabel(user) : "";
+  /** Cấp bậc hàm - tài khoản chưa được gán thì bỏ trống, không hiện chỗ giữ. */
+  const rank = user?.rank?.trim() ?? "";
+  const initials = user ? initialsOf(user) : "?";
+
+  const handleLogout = async () => {
+    await logout();
+    toast.success("Đã đăng xuất.");
+    router.replace("/login");
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="flex cursor-pointer items-center gap-2.5 rounded-md py-1 pl-1 pr-1 outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring md:pr-2"
+          aria-label="Menu tài khoản"
+        >
+          <Avatar className="size-9 ring-2 ring-primary/15">
+            <AvatarFallback
+              className="text-xs font-semibold text-primary-foreground"
+              style={{ background: "var(--gradient-hero)" }}
+            >
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          <div className="hidden min-w-0 text-left leading-tight md:block">
+            {/*
+              Cấp bậc và tên là MỘT cụm xưng hô nên cùng một màu - tách màu là
+              bắt mắt ghép lại. Dòng dưới vẫn là vai trò trong hệ thống, khác
+              hẳn cấp bậc hàm: một cái nói quyền trên phần mềm, một cái nói
+              quân hàm.
+            */}
+            <div className="truncate text-sm font-semibold text-primary">
+              {rank ? `${rank} ` : ""}
+              {name}
+            </div>
+            {role ? (
+              <div className="truncate text-xs text-muted-foreground">
+                {role}
+              </div>
+            ) : null}
+          </div>
+        </button>
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent align="end" className="w-48">
+        {/* Hai mục vào hai tab khác nhau của cùng trang tài khoản - trước đây
+            cả hai đổ về đúng một màn hình nên bấm cái nào cũng như nhau. */}
+        <DropdownMenuItem asChild>
+          <Link href="/settings?tab=profile">
+            <UserRound />
+            Hồ sơ
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/settings?tab=security">
+            <Lock />
+            Đổi mật khẩu
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={handleLogout}
+          className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+        >
+          <LogOut />
+          Đăng xuất
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
