@@ -14,81 +14,37 @@ export const metadata: Metadata = {
   },
 };
 
-const stats = [
-  {
-    title: "VẬN HÀNH",
-    label: "Số liệu thống nhất, quản lý tập trung trên một hệ thống.",
-    value: "CHÍNH XÁC",
-  },
-  {
-    title: "QUẢN LÝ",
-    label: "Mọi thao tác đều được ghi nhận đầy đủ.",
-    value: "MINH BẠCH",
-  },
-  {
-    title: "TỐC ĐỘ CẬP NHẬT",
-    label: "Thông tin được cập nhật theo thời gian thực.",
-    value: "KỊP THỜI",
-  },
-];
-
 export default function LoginPage() {
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-background">
       <aside
-        className="relative hidden lg:flex flex-col justify-between p-12 text-primary-foreground overflow-hidden"
+        className="relative hidden lg:flex flex-col p-12 text-primary-foreground overflow-hidden"
         style={{ background: "var(--gradient-hero)" }}
       >
         <div
           className="absolute inset-0 opacity-70 mix-blend-overlay pointer-events-none"
           style={{ background: "var(--gradient-mesh)" }}
         />
-        <div className="relative h-20 w-20 shrink-0">
-          <Image
-            src={APP_LOGO}
-            alt="Logo"
-            fill
-            sizes="80px"
-            className="object-contain"
-            priority
-          />
+        {/* Logo to ở giữa, tên phần mềm chữ trắng bên dưới. */}
+        <div className="relative flex flex-1 flex-col items-center justify-center text-center">
+          <div className="relative size-48 shrink-0 drop-shadow-2xl xl:size-56">
+            <Image
+              src={APP_LOGO}
+              alt="Logo"
+              fill
+              sizes="224px"
+              className="object-contain"
+              priority
+            />
+          </div>
+          {/* TÊN PHẦN MỀM - tiêu đề chính của trang; chữ tự xuống dòng theo
+              bề rộng cột. */}
+          <h1 className="mt-10 max-w-2xl font-display text-3xl font-bold leading-snug tracking-tight text-white [text-wrap:balance] xl:text-4xl">
+            {APP_NAME}
+          </h1>
         </div>
 
-        <div className="relative space-y-10">
-          <div>
-            {/* TÊN PHẦN MỀM - tiêu đề chính của trang. */}
-            {/* Tên dài nên để chữ tự xuống dòng theo bề rộng cột, không ép
-                từng vế một dòng (màn laptop nhỏ sẽ tràn). */}
-            <h1 className="max-w-3xl font-display text-4xl font-bold leading-[1.12] tracking-tight xl:text-5xl">
-              {APP_NAME}
-            </h1>
-            <p className="mt-6 max-w-xl text-white/75">
-              Giao việc, theo dõi tiến độ và đánh giá kết quả trên một hệ thống
-              nội bộ.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 max-w-5xl">
-            {stats.map(({ title, label, value }) => (
-              <div
-                key={title}
-                className="rounded-3xl bg-white/10 backdrop-blur-md p-7 ring-1 ring-white/15 min-h-[220px] flex flex-col justify-between"
-              >
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-[0.35em] text-white/70 mb-4">
-                    {title}
-                  </div>
-                  <div className="font-display text-4xl font-bold leading-tight">
-                    {value}
-                  </div>
-                </div>
-                <div className="text-sm text-white/70 mt-4">{label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="relative text-sm text-white/70">
+        <div className="relative text-center text-sm text-white/70">
           © <ServerYear />
         </div>
       </aside>

@@ -89,8 +89,9 @@ function PersonChip({ person }: { person?: TaskPerson | null }) {
   if (!person) return <span className="font-normal text-muted-foreground">-</span>;
   const tag = rolePersonTag(person);
   return (
-    <span className="inline-flex max-w-full items-center gap-2">
-      <span className="truncate">{personName(person)}</span>
+    // Tên dài thì xuống dòng (nhãn chức vụ theo sau), không cắt "…".
+    <span className="inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-0.5">
+      <span className="[overflow-wrap:anywhere]">{personName(person)}</span>
       {tag ? (
         <span className={cn("shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold", tag.className)}>
           {tag.label}

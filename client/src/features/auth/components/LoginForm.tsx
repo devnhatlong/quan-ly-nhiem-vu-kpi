@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Eye, EyeOff, KeyRound, Lock, User } from "lucide-react";
+import { Eye, EyeOff, Lock, User } from "lucide-react";
 import { toast } from "sonner";
 
 import { useAuth } from "@/features/auth/auth-provider";
@@ -129,25 +129,6 @@ export function LoginForm() {
           }}
         >
           {loading ? "Đang đăng nhập..." : "Đăng nhập"}
-        </button>
-
-        <div className="relative py-1">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-border" />
-          </div>
-          <div className="relative flex justify-center">
-            <span className="bg-card px-3 text-xs text-muted-foreground">
-              hoặc tiếp tục với
-            </span>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          className="w-full h-11 rounded-lg border border-border bg-background hover:bg-secondary text-sm font-medium text-foreground transition inline-flex items-center justify-center gap-2"
-        >
-          <KeyRound className="h-4 w-4" />
-          Đăng nhập bằng SSO
         </button>
       </div>
     </form>
