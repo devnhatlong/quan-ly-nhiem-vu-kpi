@@ -126,7 +126,7 @@ function ProfileForm({ user, onSaved }: ProfileFormProps) {
             id="profile-position"
             value={position}
             onChange={(e) => setPosition(e.target.value)}
-            placeholder="Đội trưởng"
+            placeholder="Trợ lý"
           />
         </div>
         <div className="space-y-2">

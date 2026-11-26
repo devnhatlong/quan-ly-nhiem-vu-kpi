@@ -10,14 +10,14 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
-import { IsPoliceRank } from '@/common/enums/police-rank.enum';
+import { IsRank } from '@/common/enums/rank.enum';
 import {
   BooleanNotRequired,
   StringNotRequired,
 } from '@/common/decorators';
 
 export class RoleAssignmentDto {
-  @ApiProperty({ example: 'STAFF' })
+  @ApiProperty({ example: 'ASSISTANT' })
   @IsString({ message: 'Mã vai trò phải là một chuỗi.' })
   @IsNotEmpty({ message: 'Mã vai trò không được để trống.' })
   roleCode!: string;
@@ -47,10 +47,10 @@ export class UpdateUserDto {
   @StringNotRequired('Số điện thoại', { example: '0901234567' })
   phone?: string;
 
-  @StringNotRequired('Chức vụ', { example: 'Đội trưởng' })
+  @StringNotRequired('Chức vụ', { example: 'Trợ lý' })
   position?: string;
 
-  @IsPoliceRank()
+  @IsRank()
   rank?: string;
 
   @StringNotRequired('Mã đơn vị', { example: '507f1f77bcf86cd799439011' })

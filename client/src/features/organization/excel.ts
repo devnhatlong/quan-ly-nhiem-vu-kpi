@@ -9,7 +9,6 @@ import type {
 const UNIT_HEADERS = [
   "code",
   "name",
-  "levelCode",
   "parentCode",
   "sortOrder",
   "isActive",
@@ -74,18 +73,16 @@ export async function downloadUnitsImportTemplate() {
 
   ws.addRow([...UNIT_HEADERS]);
   ws.getRow(1).font = { bold: true };
-  ws.addRow(["CAT", "Công an tỉnh Lâm Đồng", "", "TINH", 0, true]);
-  ws.addRow(["PV01", "Phòng Tham mưu", "CAT", "PHONG", 1, true]);
-  ws.addRow(["TMTH", "Đội Tham mưu Tổng hợp", "PV01", "DOI", 1, true]);
+  ws.addRow(["P01", "Phòng ...", "", 0, true]);
+  ws.addRow(["TMKH", "Ban Tham mưu Kế hoạch", "P01", 1, true]);
 
   ws.columns = [
-    { width: 14 },
-    { width: 36 },
-    { width: 14 },
-    { width: 12 },
-    { width: 12 },
-    { width: 12 },
-  ];
+    { width: 14 }, // code
+    { width: 36 }, // name
+    { width: 14 }, // parentCode
+    { width: 12 }, // sortOrder
+    { width: 12 }, // isActive
+  ]
 
   const buffer = await wb.xlsx.writeBuffer();
   saveAs(
@@ -125,9 +122,6 @@ export async function parseUnitsExcel(
     const parentCode = col("parentcode")
       ? cellText(row.getCell(col("parentcode")!).value) || undefined
       : undefined;
-    const levelCode = col("levelcode")
-      ? cellText(row.getCell(col("levelcode")!).value) || undefined
-      : undefined;
     const sortRaw = col("sortorder")
       ? cellText(row.getCell(col("sortorder")!).value)
       : "";
@@ -139,7 +133,6 @@ export async function parseUnitsExcel(
       code,
       name,
       parentCode,
-      levelCode,
       sortOrder: sortRaw ? Number(sortRaw) || 0 : undefined,
       isActive: parseBool(activeRaw),
     });
@@ -156,47 +149,36 @@ export async function downloadUsersImportTemplate() {
   ws.addRow([...USER_HEADERS]);
   ws.getRow(1).font = { bold: true };
   ws.addRow([
-    "pv01",
-    "Phòng PV01",
-    "pv01a@lamdong.bca",
-    "0123456789",
-    "Trưởng phòng",
-    "Đại tá",
-    "PV01",
-    "UNIT_ADMIN",
-    true,
-  ]);
-  ws.addRow([
-    "pv01.pho",
-    "Phó phòng PV01",
-    "pv01.pho@lamdong.bca",
-    "0123456789",
-    "Phó trưởng phòng",
+    "truongban",
+    "Nguyễn Văn A",
+    "truongban@noibo.local",
+    "",
+    "Trưởng ban",
     "Thượng tá",
-    "PV01",
-    "VICE_UNIT_ADMIN",
+    "TMKH",
+    "HEAD",
     true,
   ]);
   ws.addRow([
-    "pv01.cntt",
-    "Đội Công nghệ thông tin",
-    "pv01.cntt@lamdong.bca",
-    "0123456789",
-    "Đội trưởng",
-    "Thiếu tá",
-    "CNTT",
-    "MANAGER",
+    "phoban",
+    "Trần Văn B",
+    "phoban@noibo.local",
+    "",
+    "Phó ban",
+    "Trung tá",
+    "TMKH",
+    "DEPUTY",
     true,
   ]);
   ws.addRow([
-    "pv01.nnlong",
-    "Nguyễn Nhật Long",
-    "pv01.nnlong@lamdong.bca",
-    "0123456789",
-    "Cán bộ",
+    "troly1",
+    "Lê Văn C",
+    "troly1@noibo.local",
+    "",
+    "Trợ lý",
     "Đại úy",
-    "CNTT",
-    "STAFF",
+    "TMKH",
+    "ASSISTANT",
     true,
   ]);
 

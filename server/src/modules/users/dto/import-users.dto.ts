@@ -9,7 +9,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-import { IsPoliceRank } from '@/common/enums/police-rank.enum';
+import { IsRank } from '@/common/enums/rank.enum';
 
 export class ImportUserRowDto {
   @ApiProperty({ example: 'nv01', description: 'Tên đăng nhập' })
@@ -21,7 +21,7 @@ export class ImportUserRowDto {
   @IsString({ message: 'Họ tên phải là chuỗi.' })
   fullName?: string;
 
-  @ApiPropertyOptional({ example: 'a@lamdong.bca' })
+  @ApiPropertyOptional({ example: 'a@noibo.local' })
   @IsOptional()
   @IsString({ message: 'Email phải là chuỗi.' })
   email?: string;
@@ -31,16 +31,16 @@ export class ImportUserRowDto {
   @IsString({ message: 'Số điện thoại phải là chuỗi.' })
   phone?: string;
 
-  @ApiPropertyOptional({ example: 'Đội trưởng' })
+  @ApiPropertyOptional({ example: 'Trợ lý' })
   @IsOptional()
   @IsString({ message: 'Chức vụ phải là chuỗi.' })
   position?: string;
 
-  @IsPoliceRank()
+  @IsRank()
   rank?: string;
 
   @ApiPropertyOptional({
-    example: 'PV01',
+    example: 'TMKH',
     description: 'Mã đơn vị (department code)',
   })
   @IsOptional()
@@ -48,7 +48,7 @@ export class ImportUserRowDto {
   departmentCode?: string;
 
   @ApiPropertyOptional({
-    example: 'STAFF,MANAGER',
+    example: 'ASSISTANT',
     description: 'Danh sách mã vai trò, cách nhau bởi dấu phẩy',
   })
   @IsOptional()

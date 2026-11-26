@@ -22,7 +22,6 @@ import {
 import type {
   CreateDepartmentInput,
   Department,
-  DepartmentLevel,
 } from "@/features/organization/types";
 import { entityId } from "@/features/organization/types";
 import { getApiErrorMessage } from "@/lib/api-client";
@@ -31,7 +30,6 @@ type UnitFormDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   departments: Department[];
-  levels: DepartmentLevel[];
   edit?: Department | null;
   defaultParentId?: string;
   onSuccess: () => void;
@@ -43,14 +41,12 @@ export function UnitFormDialog({
   open,
   onOpenChange,
   departments,
-  levels,
   edit,
   defaultParentId,
   onSuccess,
 }: UnitFormDialogProps) {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
-  const [levelId, setLevelId] = useState(NONE);
   const [parentId, setParentId] = useState(NONE);
   const [sortOrder, setSortOrder] = useState("0");
   const [isActive, setIsActive] = useState(true);
@@ -61,10 +57,6 @@ export function UnitFormDialog({
     if (edit) {
       setCode(edit.code);
       setName(edit.name);
-      setLevelId(
-        entityId(edit.levelId as { _id?: string; id?: string } | string) ||
-          NONE,
-      );
       setParentId(
         entityId(edit.parentId as { _id?: string; id?: string } | string) ||
           NONE,
@@ -74,7 +66,6 @@ export function UnitFormDialog({
     } else {
       setCode("");
       setName("");
-      setLevelId(NONE);
       setParentId(defaultParentId || NONE);
       setSortOrder("0");
       setIsActive(true);
@@ -82,18 +73,6 @@ export function UnitFormDialog({
   }, [open, edit, defaultParentId]);
 
   const editId = edit ? entityId(edit) : "";
-
-  const levelOptions = useMemo(
-    () => [
-      { value: NONE, label: "- Không chọn -" },
-      ...levels.map((level) => ({
-        value: entityId(level),
-        label: `${level.code} - ${level.name}`,
-        keywords: level.code,
-      })),
-    ],
-    [levels],
-  );
 
   const parentOptions = useMemo(
     () => [
@@ -121,7 +100,6 @@ export function UnitFormDialog({
       sortOrder: Number(sortOrder) || 0,
       isActive,
     };
-    if (levelId !== NONE) payload.levelId = levelId;
     if (parentId !== NONE) payload.parentId = parentId;
 
     setSaving(true);
@@ -129,7 +107,6 @@ export function UnitFormDialog({
       if (edit) {
         await updateDepartment(entityId(edit), {
           ...payload,
-          levelId: levelId === NONE ? null : levelId,
           parentId: parentId === NONE ? null : parentId,
         });
         toast.success("Đã cập nhật đơn vị.");
@@ -176,16 +153,6 @@ export function UnitFormDialog({
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Cấp đơn vị</Label>
-              <SearchableSelect
-                value={levelId}
-                onValueChange={setLevelId}
-                options={levelOptions}
-                placeholder="Chọn cấp"
-                searchPlaceholder="Tìm cấp đơn vị..."
-              />
-            </div>
             <div className="space-y-2">
               <Label>Thuộc đơn vị</Label>
               <SearchableSelect

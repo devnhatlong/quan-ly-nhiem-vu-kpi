@@ -11,7 +11,7 @@ import {
 } from 'class-validator';
 
 export class ImportDepartmentRowDto {
-  @ApiProperty({ example: 'PV01', description: 'Mã đơn vị' })
+  @ApiProperty({ example: 'TMKH', description: 'Mã đơn vị' })
   @IsString({ message: 'Mã đơn vị phải là chuỗi.' })
   code!: string;
 
@@ -26,14 +26,6 @@ export class ImportDepartmentRowDto {
   @IsOptional()
   @IsString({ message: 'Mã đơn vị cha phải là chuỗi.' })
   parentCode?: string;
-
-  @ApiPropertyOptional({
-    example: 'PHONG',
-    description: 'Mã cấp đơn vị (department level code)',
-  })
-  @IsOptional()
-  @IsString({ message: 'Mã cấp đơn vị phải là chuỗi.' })
-  levelCode?: string;
 
   @ApiPropertyOptional({ example: 0 })
   @IsOptional()

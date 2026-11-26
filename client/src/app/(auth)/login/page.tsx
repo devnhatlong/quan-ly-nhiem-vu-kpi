@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { APP_NAME, ORG_NAME } from "@/constants/app";
+import { APP_LOGO, APP_NAME } from "@/constants/app";
 import { LoginForm } from "@/features/auth/components/LoginForm";
 
 export const metadata: Metadata = {
@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   description: `Đăng nhập vào ${APP_NAME}.`,
   openGraph: {
     title: `Đăng nhập - ${APP_NAME}`,
-    description: `${APP_NAME} - ${ORG_NAME}.`,
+    description: `${APP_NAME}.`,
   },
 };
 
@@ -42,35 +42,28 @@ export default function LoginPage() {
           className="absolute inset-0 opacity-70 mix-blend-overlay pointer-events-none"
           style={{ background: "var(--gradient-mesh)" }}
         />
-        {/* Đơn vị chủ quản: dòng nhỏ cạnh logo - nhường chỗ to nhất cho tên
-            phần mềm ở dưới. */}
-        <div className="relative flex items-center gap-3">
-          <div className="relative h-14 w-14 shrink-0">
-            <Image
-              src="/icons/logo_cand.png"
-              alt="Logo Công an"
-              fill
-              sizes="56px"
-              className="object-contain"
-            />
-          </div>
-          <div className="text-sm font-semibold uppercase tracking-[0.25em] text-yellow-300">
-            {ORG_NAME}
-          </div>
+        <div className="relative h-20 w-20 shrink-0">
+          <Image
+            src={APP_LOGO}
+            alt="Logo"
+            fill
+            sizes="80px"
+            className="object-contain"
+            priority
+          />
         </div>
 
         <div className="relative space-y-10">
           <div>
             {/* TÊN PHẦN MỀM - tiêu đề chính của trang. */}
-            {/* Hai vế CÙNG CỠ - đọc liền một tên, chỉ khác màu. Tên dài nên
-                để chữ tự xuống dòng theo bề rộng cột, không ép từng vế một
-                dòng (màn laptop nhỏ sẽ tràn). */}
-            <h1 className="font-display text-5xl font-bold leading-[1.08] tracking-tight xl:text-6xl">
-              <span className="block">{APP_NAME}</span>
-              <span className="block text-yellow-100">{ORG_NAME}</span>
+            {/* Tên dài nên để chữ tự xuống dòng theo bề rộng cột, không ép
+                từng vế một dòng (màn laptop nhỏ sẽ tràn). */}
+            <h1 className="max-w-3xl font-display text-4xl font-bold leading-[1.12] tracking-tight xl:text-5xl">
+              {APP_NAME}
             </h1>
             <p className="mt-6 max-w-xl text-white/75">
-              Hệ thống nội bộ dành cho cán bộ, chiến sĩ {ORG_NAME}.
+              Giao việc, theo dõi tiến độ và đánh giá kết quả trên một hệ thống
+              nội bộ.
             </p>
           </div>
 
@@ -95,31 +88,25 @@ export default function LoginPage() {
         </div>
 
         <div className="relative text-sm text-white/70">
-          © {new Date().getFullYear()} {ORG_NAME}.
+          © {new Date().getFullYear()}
         </div>
       </aside>
 
       <main className="flex items-center justify-center px-6 py-12 sm:px-10">
         <div className="w-full max-w-md">
-          {/* Bản cho màn hẹp (không có cột trái): tên phần mềm vẫn là chữ to
-              nhất, đơn vị chủ quản là dòng nhỏ phía trên. */}
+          {/* Bản cho màn hẹp (không có cột trái): logo + tên phần mềm. */}
           <div className="lg:hidden mb-10 flex items-center gap-4">
             <div className="relative h-16 w-16 shrink-0">
               <Image
-                src="/icons/logo_cand.png"
-                alt="Logo Công an"
+                src={APP_LOGO}
+                alt="Logo"
                 fill
                 sizes="64px"
                 className="object-contain"
               />
             </div>
-            <div className="min-w-0">
-              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                {ORG_NAME}
-              </div>
-              <div className="font-display text-xl font-bold leading-tight text-primary">
-                {APP_NAME}
-              </div>
+            <div className="min-w-0 font-display text-lg font-bold leading-tight text-primary">
+              {APP_NAME}
             </div>
           </div>
 

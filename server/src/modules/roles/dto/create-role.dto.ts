@@ -11,7 +11,7 @@ import {
 import { Type } from 'class-transformer';
 
 export class CreateRoleDto {
-  @ApiProperty({ example: 'STAFF' })
+  @ApiProperty({ example: 'ASSISTANT' })
   @IsString({ message: 'Mã vai trò phải là một chuỗi.' })
   @IsNotEmpty({ message: 'Mã vai trò không được để trống.' })
   code!: string;

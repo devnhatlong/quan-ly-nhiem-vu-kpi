@@ -9,7 +9,7 @@ import {
 
 import { RoleAssignmentDto } from './update-user.dto';
 
-import { IsPoliceRank } from '@/common/enums/police-rank.enum';
+import { IsRank } from '@/common/enums/rank.enum';
 /** Tạo người dùng bởi admin (đủ hồ sơ + vai trò). */
 export class AdminCreateUserDto {
   @StringRequired('Tên đăng nhập', { example: 'longnguyen' })
@@ -27,10 +27,10 @@ export class AdminCreateUserDto {
   @StringNotRequired('Số điện thoại', { example: '0901234567' })
   phone?: string;
 
-  @StringNotRequired('Chức vụ', { example: 'Đội trưởng' })
+  @StringNotRequired('Chức vụ', { example: 'Trợ lý' })
   position?: string;
 
-  @IsPoliceRank()
+  @IsRank()
   rank?: string;
 
   @StringNotRequired('Mã đơn vị', { example: '507f1f77bcf86cd799439011' })

@@ -24,7 +24,7 @@ import {
   roleKeys,
   updateUser,
 } from "@/features/organization/api";
-import { NO_RANK, RANK_OPTIONS } from "@/features/organization/police-rank";
+import { NO_RANK, RANK_OPTIONS } from "@/features/organization/rank";
 import type { UserAccount } from "@/features/organization/types";
 import { entityId } from "@/features/organization/types";
 import { getApiErrorMessage } from "@/lib/api-client";
@@ -239,7 +239,7 @@ export function UserFormDialog({
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="a@lamdong.bca"
+                placeholder="a@noibo.local"
               />
             </div>
             <div className="space-y-2">
@@ -248,7 +248,7 @@ export function UserFormDialog({
                 id="user-position"
                 value={position}
                 onChange={(e) => setPosition(e.target.value)}
-                placeholder="Đội trưởng"
+                placeholder="Trợ lý"
               />
             </div>
           </div>

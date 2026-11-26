@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 
-import { APP_NAME } from "@/constants/app";
+import { APP_NAME, APP_SHORT_NAME } from "@/constants/app";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthProvider } from "@/features/auth/auth-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -21,7 +21,8 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: {
     default: APP_NAME,
-    template: `%s - ${APP_NAME}`,
+    // Tab trình duyệt hẹp - dùng tên ngắn.
+    template: `%s - ${APP_SHORT_NAME}`,
   },
   description: APP_NAME,
 };

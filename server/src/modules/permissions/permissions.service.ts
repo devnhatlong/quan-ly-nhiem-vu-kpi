@@ -40,17 +40,17 @@ const SYSTEM_PERMISSIONS: Array<{
   },
   {
     code: Permission.DEPARTMENT_VIEW,
-    name: 'Đơn vị & Cấp đơn vị - xem',
+    name: 'Đơn vị - xem',
     module: 'department',
     sortOrder: 30,
-    description: 'Menu Tổ chức › Đơn vị, Cấp đơn vị: xem cây đơn vị',
+    description: 'Menu Tổ chức › Đơn vị: xem cây đơn vị',
   },
   {
     code: Permission.DEPARTMENT_MANAGE,
-    name: 'Đơn vị & Cấp đơn vị - thêm, sửa, xoá',
+    name: 'Đơn vị - thêm, sửa, xoá',
     module: 'department',
     sortOrder: 40,
-    description: 'Thêm, sửa, xoá đơn vị / cấp đơn vị',
+    description: 'Thêm, sửa, xoá, import đơn vị',
   },
   {
     code: Permission.ROLE_ASSIGN,

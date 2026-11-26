@@ -73,11 +73,9 @@ export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
  */
 export const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: "Quản trị hệ thống",
-  CAT_ADMIN: "Công an tỉnh",
-  UNIT_ADMIN: "Trưởng phòng, trưởng xã",
-  VICE_UNIT_ADMIN: "Phó phòng, phó xã",
-  MANAGER: "Đội trưởng",
-  STAFF: "Cán bộ",
+  HEAD: "Trưởng ban",
+  DEPUTY: "Phó ban",
+  ASSISTANT: "Trợ lý",
 };
 
 export function displayNameOf(user: AuthUser): string {
@@ -95,20 +93,15 @@ export function initialsOf(user: AuthUser): string {
 
 /** Bậc vai trò từ thấp lên cao - để chọn vai trò "chính" khi giữ nhiều vai trò. */
 const ROLE_RANK: string[] = [
-  "STAFF",
-  "MANAGER",
-  "VICE_UNIT_ADMIN",
-  "UNIT_ADMIN",
-  "CAT_ADMIN",
+  "ASSISTANT",
+  "DEPUTY",
+  "HEAD",
   "SUPER_ADMIN",
 ];
 
 /**
- * Vai trò cao nhất người này đang giữ.
- *
- * Một tài khoản có chức vụ nay giữ nhiều vai trò cùng lúc, mà `roleAssignments`
- * xếp theo thứ tự lúc gán chứ không theo bậc - lấy phần tử đầu là đội trưởng
- * hiện ra thành "Cán bộ" chỉ vì vai trò đó được gán trước.
+ * Vai trò cao nhất người này đang giữ - `roleAssignments` xếp theo thứ tự lúc
+ * gán chứ không theo bậc.
  */
 export function highestRoleCode(user: AuthUser | null | undefined): string {
   let best = "";

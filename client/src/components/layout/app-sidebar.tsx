@@ -249,7 +249,7 @@ export function AppSidebar() {
             <SidebarMenuButton
               size="lg"
               asChild
-              tooltip={SIDEBAR_BRAND.subtitle}
+              tooltip={SIDEBAR_BRAND.title}
               className="h-16 group-data-[collapsible=icon]:h-16 group-data-[collapsible=icon]:p-1"
             >
               <Link href="/dashboard">
@@ -282,7 +282,7 @@ export function AppSidebar() {
                   chìm vào nền.
                 */}
                 {/* Chữ thường, không in hoa: tên dài, in hoa thì "PHẦN MỀM
-                    QUẢN LÝ NHIỆM VỤ KPI" không vừa ~168px cạnh logo. */}
+                    QUẢN LÝ, ĐIỀU HÀNH" không vừa ~168px cạnh logo. */}
                 <div className="min-w-0 flex-1 text-left font-display text-sm font-bold leading-[1.3] text-sidebar-primary">
                   {SIDEBAR_BRAND.subtitleLines.map((line) => (
                     <span key={line} className="block truncate">

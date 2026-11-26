@@ -11,7 +11,10 @@ import { Model, Types } from 'mongoose';
 
 import { Role, RoleDocument } from './schemas/role.schema';
 import { Permission } from '@/common/enums/permission.enum';
-import { RoleCode } from '@/common/enums/role-code.enum';
+import {
+  RETIRED_ROLE_CODES,
+  RoleCode,
+} from '@/common/enums/role-code.enum';
 import { Helper } from '@/ultis/helpers';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
@@ -40,36 +43,22 @@ const SYSTEM_ROLES: Array<{
     permissions: ALL_PERMISSIONS,
   },
   {
-    code: RoleCode.CAT_ADMIN,
-    name: 'Công an tỉnh',
-    sortOrder: 15,
-    permissions: BASE_PERMISSIONS,
-  },
-  {
-    code: RoleCode.UNIT_ADMIN,
-    name: 'Trưởng phòng, trưởng xã',
+    code: RoleCode.HEAD,
+    name: 'Trưởng ban',
     sortOrder: 20,
-    // Không có ROLE_ASSIGN / USER_MANAGE: hai quyền đó chưa bị giới hạn theo
-    // phạm vi đơn vị nên cấp cho quản trị đơn vị là họ tự gán được vai trò
-    // SUPER_ADMIN cho chính mình. DEPARTMENT_MANAGE cũng vậy - xoá được đơn vị
-    // của bất kỳ nhánh nào. Chỉ mở lại khi các route đó chặn theo cây đơn vị.
+    // Không có ROLE_ASSIGN / USER_MANAGE: quản lý tài khoản là việc của quản
+    // trị hệ thống. Quyền nghiệp vụ (giao, xác nhận nhiệm vụ...) thêm sau.
     permissions: BASE_PERMISSIONS,
   },
   {
-    code: RoleCode.VICE_UNIT_ADMIN,
-    name: 'Phó phòng, phó xã',
-    sortOrder: 25,
-    permissions: BASE_PERMISSIONS,
-  },
-  {
-    code: RoleCode.MANAGER,
-    name: 'Đội trưởng',
+    code: RoleCode.DEPUTY,
+    name: 'Phó ban',
     sortOrder: 30,
     permissions: BASE_PERMISSIONS,
   },
   {
-    code: RoleCode.STAFF,
-    name: 'Cán bộ',
+    code: RoleCode.ASSISTANT,
+    name: 'Trợ lý',
     sortOrder: 40,
     permissions: [],
   },
@@ -94,8 +83,29 @@ export class RolesService implements OnModuleInit {
 
   async onModuleInit() {
     await this.permissionsService.seedSystemPermissions();
+    await this.retireOldSystemRoles();
     await this.seedSystemRoles();
     await this.grantNewSystemPermissions();
+  }
+
+  /**
+   * Xoá vai trò hệ thống của bản khung cũ và gỡ chúng khỏi tài khoản. Chỉ đụng
+   * đúng các mã trong RETIRED_ROLE_CODES và chỉ vai trò hệ thống: vai trò quản
+   * trị tự tạo trùng mã thì giữ.
+   */
+  private async retireOldSystemRoles() {
+    const codes = [...RETIRED_ROLE_CODES];
+    const { deletedCount } = await this.roleModel.deleteMany({
+      code: { $in: codes },
+      isSystem: true,
+    });
+    if (!deletedCount) return;
+    await this.roleModel.db
+      .collection('users')
+      .updateMany(
+        { 'roleAssignments.roleCode': { $in: codes } },
+        { $pull: { roleAssignments: { roleCode: { $in: codes } } } } as never,
+      );
   }
 
   /**

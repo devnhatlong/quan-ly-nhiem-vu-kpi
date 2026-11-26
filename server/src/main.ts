@@ -9,7 +9,8 @@ import { AllExceptionFilter } from './common/filters/all-exception.filter';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 /** Tên phần mềm, hiện ở Swagger. Khớp `client/src/constants/app.ts`. */
-const APP_NAME = 'Phần mềm quản lý nhiệm vụ KPI';
+const APP_NAME =
+  'Hệ thống quản lý, điều hành và đánh giá kết quả thực hiện nhiệm vụ trên mạng nội bộ';
 
 /**
  * Origin được gọi API từ trình duyệt khác origin.

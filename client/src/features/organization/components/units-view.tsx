@@ -52,7 +52,6 @@ import { TablePagination } from "@/components/common/table-pagination";
 import {
   deleteDepartment,
   departmentKeys,
-  fetchDepartmentLevels,
   fetchDepartments,
   fetchUsers,
 } from "@/features/organization/api";
@@ -66,12 +65,11 @@ import {
   type UnitTreeNode,
 } from "@/features/organization/tree-utils";
 import type { Department } from "@/features/organization/types";
-import { entityId, levelOf } from "@/features/organization/types";
+import { entityId } from "@/features/organization/types";
 import {
   activeBadgeClass,
-  groupLevelBadgeClass,
   inactiveBadgeClass,
-  levelBadgeClass,
+  depthBadgeClass,
 } from "@/features/organization/badge-styles";
 import { getApiErrorMessage } from "@/lib/api-client";
 import { DEFAULT_PAGE_SIZE, rowIndex } from "@/lib/pagination";
@@ -107,9 +105,6 @@ function TreeItem({
 }) {
   const hasChildren = node.children.length > 0;
   const isOpen = expanded.has(node.id);
-  const level = levelOf(node.department);
-  /** Cấp gom nhóm (Khối) - chỉ để gộp các đơn vị bên trong. */
-  const isGroup = level?.isMissionUnit === false;
   const selected = selectedId === node.id;
   const stubWidth = hasChildren ? TREE_STUB_BRANCH : TREE_STUB_LEAF;
   /** Lá sát trục; node có con cách ra để chỗ icon +/- */
@@ -171,24 +166,12 @@ function TreeItem({
           <Badge
             className={cn(
               "min-w-[2.75rem] shrink-0 justify-center rounded px-1.5 py-0 text-[10px] font-bold tracking-wide",
-              isGroup ? groupLevelBadgeClass : levelBadgeClass(level?.rank),
+              depthBadgeClass(node.department.depth),
             )}
           >
             {node.department.code}
           </Badge>
-          <span
-            className={cn(
-              "whitespace-nowrap",
-              isGroup && "text-muted-foreground",
-            )}
-          >
-            {node.department.name}
-          </span>
-          {isGroup ? (
-            <span className="shrink-0 rounded border border-dashed px-1 text-[10px] leading-4 text-muted-foreground">
-              nhóm
-            </span>
-          ) : null}
+          <span className="whitespace-nowrap">{node.department.name}</span>
         </span>
       </button>
 
@@ -241,14 +224,6 @@ export function UnitsView() {
   } = useSWR(departmentKeys.all, fetchDepartments, {
     revalidateOnFocus: false,
   });
-
-  const { data: levels = [] } = useSWR(
-    departmentKeys.levels,
-    fetchDepartmentLevels,
-    {
-      revalidateOnFocus: false,
-    },
-  );
 
   const { data: users = [] } = useSWR(departmentKeys.users, fetchUsers, {
     revalidateOnFocus: false,
@@ -305,8 +280,6 @@ export function UnitsView() {
     usersPage * usersLimit,
   );
 
-  const selectedLevel = selected ? levelOf(selected) : null;
-  const selectedIsGroup = selectedLevel?.isMissionUnit === false;
   const crumb = selected
     ? breadcrumbPath(departments, effectiveSelectedId)
     : "";
@@ -494,21 +467,6 @@ export function UnitsView() {
                 <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 space-y-1.5">
                     <div className="flex flex-wrap items-center gap-2">
-                      {selectedLevel ? (
-                        <Badge
-                          className={
-                            selectedIsGroup
-                              ? groupLevelBadgeClass
-                              : levelBadgeClass(selectedLevel.rank)
-                          }
-                        >
-                          {selectedLevel.name}
-                        </Badge>
-                      ) : (
-                        <Badge className="border-0 bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200">
-                          Chưa gán cấp
-                        </Badge>
-                      )}
                       <h2 className="font-display text-xl font-semibold tracking-tight md:text-2xl">
                         {selected.name}
                       </h2>
@@ -544,17 +502,6 @@ export function UnitsView() {
                     </Button>
                   </div>
                 </div>
-
-                {selectedIsGroup ? (
-                  <div className="mb-5 rounded-lg border border-dashed bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-                    Đây là{" "}
-                    <span className="font-medium text-foreground">
-                      cấp gom nhóm
-                    </span>
-                    , không phải đơn vị thật - chỉ dùng để gộp các đơn vị bên
-                    trong.
-                  </div>
-                ) : null}
 
                 <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3">
                   <StatBox
@@ -616,7 +563,6 @@ export function UnitsView() {
                             <TableHead className="w-14">STT</TableHead>
                             <TableHead className="w-28">Mã</TableHead>
                             <TableHead>Tên</TableHead>
-                            <TableHead className="w-32">Cấp</TableHead>
                             <TableHead className="w-28">Trạng thái</TableHead>
                             <TableHead className="w-24 text-right">
                               Thao tác
@@ -627,7 +573,7 @@ export function UnitsView() {
                           {children.length === 0 ? (
                             <TableRow>
                               <TableCell
-                                colSpan={6}
+                                colSpan={5}
                                 className="h-24 text-center text-muted-foreground"
                               >
                                 Chưa có đơn vị con. Bấm &quot;Thêm đơn vị
@@ -636,7 +582,6 @@ export function UnitsView() {
                             </TableRow>
                           ) : (
                             pagedChildren.map((child, i) => {
-                              const childLevel = levelOf(child);
                               return (
                                 <TableRow key={entityId(child)}>
                                   <TableCell className="text-muted-foreground">
@@ -644,8 +589,8 @@ export function UnitsView() {
                                   </TableCell>
                                   <TableCell>
                                     <Badge
-                                      className={levelBadgeClass(
-                                        childLevel?.rank,
+                                      className={depthBadgeClass(
+                                        child.depth,
                                       )}
                                     >
                                       {child.code}
@@ -661,9 +606,6 @@ export function UnitsView() {
                                     >
                                       {child.name}
                                     </button>
-                                  </TableCell>
-                                  <TableCell>
-                                    {childLevel?.name ?? "-"}
                                   </TableCell>
                                   <TableCell>
                                     {child.isActive ? (
@@ -821,7 +763,6 @@ export function UnitsView() {
         open={formOpen}
         onOpenChange={setFormOpen}
         departments={departments}
-        levels={levels}
         edit={formEdit}
         defaultParentId={formParentId}
         onSuccess={refresh}

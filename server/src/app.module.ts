@@ -11,7 +11,6 @@ import { UsersModule } from './modules/users/users.module';
 import { RequestTimingMiddleware } from './common/middlewares/request-timing.middleware';
 import { AuthsModule } from './modules/auth/auth.module';
 import { DepartmentsModule } from './modules/departments/departments.module';
-import { DepartmentLevelsModule } from './modules/department-levels/department-levels.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { PermissionsModule } from './modules/permissions/permissions.module';
 import { SystemModule } from './modules/system/system.module';
@@ -45,7 +44,6 @@ import type { SignOptions } from 'jsonwebtoken';
     UsersModule,
     AuthsModule,
     DepartmentsModule,
-    DepartmentLevelsModule,
     RolesModule,
     PermissionsModule,
     SystemModule,

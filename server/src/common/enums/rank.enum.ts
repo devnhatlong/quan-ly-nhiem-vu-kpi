@@ -3,10 +3,9 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsString } from 'class-validator';
 
 /**
- * Cấp bậc hàm trong Công an nhân dân.
+ * Cấp bậc hàm (hạ sĩ quan - binh sĩ, sĩ quan cấp úy, tá, tướng).
  *
- * Xếp từ THẤP LÊN CAO theo đúng trật tự của Luật Công an nhân dân, không xếp
- * theo thứ tự người dùng gõ vào: danh sách 17 mục mà chỗ tăng dần chỗ giảm dần
+ * Xếp từ THẤP LÊN CAO, không xếp theo thứ tự người dùng gõ vào: danh sách 17 mục mà chỗ tăng dần chỗ giảm dần
  * thì người chọn phải dò từng dòng, còn xếp một chiều thì mắt lướt là ra.
  *
  * Bốn nhóm liền mạch trong cùng một mảng - dropdown của dự án chưa có tiêu đề
@@ -14,11 +13,11 @@ import { IsIn, IsOptional, IsString } from 'class-validator';
  * nên không cần thêm nhãn.
  *
  * Danh sách này ĐƯỢC NHÂN BẢN ở client (`client/src/features/organization/
- * police-rank.ts`). Sửa một bên phải sửa bên kia, nếu không thì server trả 400
+ * rank.ts`). Sửa một bên phải sửa bên kia, nếu không thì server trả 400
  * cho đúng cái giá trị mà giao diện vừa bày ra cho người dùng chọn.
  */
-export const POLICE_RANKS = [
-  // Hạ sĩ quan, chiến sĩ
+export const RANKS = [
+  // Hạ sĩ quan, binh sĩ
   'Binh nhì',
   'Binh nhất',
   'Hạ sĩ',
@@ -41,7 +40,7 @@ export const POLICE_RANKS = [
   'Đại tướng',
 ] as const;
 
-export type PoliceRank = (typeof POLICE_RANKS)[number];
+export type Rank = (typeof RANKS)[number];
 
 /**
  * Trường cấp bậc dùng chung cho mọi DTO có người dùng.
@@ -52,16 +51,16 @@ export type PoliceRank = (typeof POLICE_RANKS)[number];
  *
  * Nhận chuỗi rỗng để người dùng bỏ trống được cấp bậc đã đặt nhầm.
  */
-export const IsPoliceRank = () =>
+export const IsRank = () =>
   applyDecorators(
     ApiPropertyOptional({
       description: 'Cấp bậc hàm',
-      enum: POLICE_RANKS,
+      enum: RANKS,
       example: 'Đại úy',
     }),
     IsOptional(),
     IsString({ message: 'Cấp bậc phải là một chuỗi.' }),
-    IsIn([...POLICE_RANKS, ''], {
-      message: 'Cấp bậc không nằm trong danh mục cấp bậc hàm Công an nhân dân.',
+    IsIn([...RANKS, ''], {
+      message: 'Cấp bậc không nằm trong danh mục cấp bậc hàm.',
     }),
   );

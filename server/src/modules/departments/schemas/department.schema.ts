@@ -3,7 +3,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 
-import { DepartmentLevel } from '@/modules/department-levels/schemas/department-level.schema';
 
 export type DepartmentDocument = HydratedDocument<Department>;
 
@@ -30,16 +29,6 @@ export class Department {
         lowercase: true,
     })
     slug?: string;
-
-    /**
-     * Cấp đơn vị: Tỉnh, Phòng, Đội, Tổ, Xã...
-     */
-    @Prop({
-        type: Types.ObjectId,
-        ref: DepartmentLevel.name,
-        index: true,
-    })
-    levelId?: Types.ObjectId;
 
     /**
      * Đơn vị cha.
@@ -112,12 +101,4 @@ DepartmentSchema.index({
     parentId: 1,
     sortOrder: 1,
     name: 1,
-});
-
-/**
- * Hỗ trợ lấy các đơn vị theo cấp và trạng thái.
- */
-DepartmentSchema.index({
-    levelId: 1,
-    isActive: 1,
 });

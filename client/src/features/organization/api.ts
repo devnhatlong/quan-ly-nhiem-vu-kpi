@@ -8,12 +8,10 @@ import type {
   ApiResponse,
   AppPermission,
   CreateDepartmentInput,
-  CreateDepartmentLevelInput,
   CreatePermissionInput,
   CreateRoleInput,
   CreateUserInput,
   Department,
-  DepartmentLevel,
   ImportDepartmentRow,
   ImportDepartmentsResult,
   ImportUserRow,
@@ -22,7 +20,6 @@ import type {
   PaginatedResult,
   Role,
   UpdateDepartmentInput,
-  UpdateDepartmentLevelInput,
   UpdatePermissionInput,
   UpdateRoleInput,
   UpdateUserInput,
@@ -34,15 +31,6 @@ export const departmentKeys = {
   list: (params: ListQueryParams) =>
     [
       "departments",
-      params.page,
-      params.limit,
-      params.q ?? "",
-      params.all ?? false,
-    ] as const,
-  levels: ["department-levels"] as const,
-  levelsList: (params: ListQueryParams) =>
-    [
-      "department-levels",
       params.page,
       params.limit,
       params.q ?? "",
@@ -138,48 +126,6 @@ export async function importDepartments(rows: ImportDepartmentRow[]) {
       rows,
     }),
   );
-}
-
-/** Dropdown / tree: lấy toàn bộ */
-export async function fetchDepartmentLevels() {
-  const result = await unwrapPaginated(
-    api.get<ApiResponse<DepartmentLevel[]>>("/department-levels/all", {
-      params: buildListQuery({ all: true }),
-    }),
-  );
-  return result.data;
-}
-
-export async function fetchDepartmentLevelsPage(
-  params: ListQueryParams,
-): Promise<PaginatedResult<DepartmentLevel>> {
-  return unwrapPaginated(
-    api.get<ApiResponse<DepartmentLevel[]>>("/department-levels/all", {
-      params: buildListQuery(params),
-    }),
-  );
-}
-
-export async function createDepartmentLevel(input: CreateDepartmentLevelInput) {
-  return unwrapData(
-    api.post<ApiResponse<DepartmentLevel>>("/department-levels", input),
-  );
-}
-
-export async function updateDepartmentLevel(
-  id: string,
-  input: UpdateDepartmentLevelInput,
-) {
-  return unwrapData(
-    api.patch<ApiResponse<DepartmentLevel>>(`/department-levels/${id}`, input),
-  );
-}
-
-export async function deleteDepartmentLevel(id: string) {
-  const { data } = await api.delete<ApiResponse<unknown>>(
-    `/department-levels/${id}`,
-  );
-  return data;
 }
 
 export async function fetchRolesPage(

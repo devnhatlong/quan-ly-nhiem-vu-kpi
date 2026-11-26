@@ -5,7 +5,6 @@ import { DepartmentsController } from './departments.controller';
 import { DepartmentsService } from './departments.service';
 import { AuthsModule } from '../auth/auth.module';
 import { RolesModule } from '../roles/roles.module';
-import { DepartmentLevelsModule } from '../department-levels/department-levels.module';
 
 @Module({
   imports: [
@@ -17,7 +16,6 @@ import { DepartmentLevelsModule } from '../department-levels/department-levels.m
     ]),
     forwardRef(() => AuthsModule),
     forwardRef(() => RolesModule),
-    DepartmentLevelsModule,
   ],
   exports: [MongooseModule, DepartmentsService],
   controllers: [DepartmentsController],

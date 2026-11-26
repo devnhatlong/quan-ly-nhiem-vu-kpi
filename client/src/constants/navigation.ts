@@ -2,14 +2,13 @@ import type { LucideIcon } from "lucide-react";
 import {
   Gauge,
   KeyRound,
-  Layers,
   Network,
   Settings,
   Shield,
   Users,
 } from "lucide-react";
 
-import { APP_NAME, ORG_NAME } from "@/constants/app";
+import { APP_LOGO, APP_NAME } from "@/constants/app";
 import { PERM } from "@/constants/permissions";
 
 export type NavSubItem = {
@@ -57,12 +56,6 @@ export const NAV_ITEMS: NavItem[] = [
         title: "Đơn vị",
         href: "/organization/units",
         icon: Network,
-        permissions: [PERM.DEPARTMENT_VIEW],
-      },
-      {
-        title: "Cấp đơn vị",
-        href: "/organization/levels",
-        icon: Layers,
         permissions: [PERM.DEPARTMENT_VIEW],
       },
       {
@@ -137,9 +130,8 @@ export function pathRequiresPermissions(
 }
 
 export const SIDEBAR_BRAND = {
-  title: ORG_NAME,
-  subtitle: APP_NAME,
+  title: APP_NAME,
   /** Tên trên sidebar ngắt đúng chỗ - cạnh logo chỉ còn ~168px. */
-  subtitleLines: ["Quản lý nhiệm vụ KPI", ORG_NAME],
-  logo: "/icons/logo_cand.png",
+  subtitleLines: ["Quản lý, điều hành", "& đánh giá nhiệm vụ"],
+  logo: APP_LOGO,
 } as const;

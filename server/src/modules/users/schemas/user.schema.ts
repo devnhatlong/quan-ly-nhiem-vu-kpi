@@ -2,7 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 
-import { POLICE_RANKS } from '@/common/enums/police-rank.enum';
+import { RANKS } from '@/common/enums/rank.enum';
 import { RoleAssignment, RoleAssignmentSchema } from './role-assignment.schema';
 
 @Schema({
@@ -30,19 +30,18 @@ export class User {
     @Prop({ trim: true })
     phone?: string;
 
-    /** Chức vụ hiển thị trên hồ sơ, vd: "Đội trưởng". */
+    /** Chức vụ hiển thị trên hồ sơ, vd: "Trợ lý". */
     @Prop({ trim: true })
     position?: string;
 
     /**
      * Cấp bậc hàm, vd: "Đại úy". Khác `position`: cấp bậc đi theo con người,
-     * chức vụ đi theo vị trí công tác - một đại úy có thể là đội trưởng hôm nay
-     * và cán bộ đội khác ngày mai mà cấp bậc không đổi.
+     * chức vụ đi theo vị trí công tác.
      *
      * Ràng buộc theo danh mục ngay ở tầng schema chứ không chỉ ở DTO: dữ liệu
-     * nhập từ Excel và từ script cũng đi qua đây.
+     * nhập từ Excel cũng đi qua đây.
      */
-    @Prop({ trim: true, enum: [...POLICE_RANKS, '', null] })
+    @Prop({ trim: true, enum: [...RANKS, '', null] })
     rank?: string;
 
     /** Đơn vị công tác chính của người dùng. */

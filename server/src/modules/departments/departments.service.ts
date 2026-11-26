@@ -11,7 +11,6 @@ import { Department, DepartmentDocument } from './schemas/department.schema';
 import { CreateDepartmentDto } from './dto/create-department.dto';
 import { UpdateDepartmentDto } from './dto/update-department.dto';
 import { ImportDepartmentRowDto } from './dto/import-departments.dto';
-import { DepartmentLevelsService } from '../department-levels/department-levels.service';
 import { PaginationQueryDto } from '@/common/dto/pagination-query.dto';
 import { buildPaginatedResponse } from '@/common/utils/pagination.util';
 
@@ -27,7 +26,6 @@ export class DepartmentsService {
   constructor(
     @InjectModel(Department.name)
     private readonly departmentModel: Model<DepartmentDocument>,
-    private readonly departmentLevelsService: DepartmentLevelsService,
   ) {}
 
   async create(dto: CreateDepartmentDto) {
@@ -37,17 +35,12 @@ export class DepartmentsService {
       throw new BadRequestException('Mã đơn vị đã tồn tại.');
     }
 
-    if (dto.levelId) {
-      await this.departmentLevelsService.findOne(dto.levelId);
-    }
-
     const tree = await this.resolveTreeFields(dto.parentId);
 
     const department = await this.departmentModel.create({
       code,
       name: dto.name.trim(),
       slug: Helper.slugify(dto.name),
-      levelId: dto.levelId ? new Types.ObjectId(dto.levelId) : undefined,
       parentId: tree.parentId,
       ancestors: tree.ancestors,
       path: tree.path,
@@ -72,7 +65,6 @@ export class DepartmentsService {
 
     const sort = { depth: 1 as const, sortOrder: 1 as const, name: 1 as const };
     const populate = [
-      { path: 'levelId', select: 'code name rank isMissionUnit' },
       { path: 'parentId', select: 'code name' },
     ];
 
@@ -104,7 +96,6 @@ export class DepartmentsService {
   async findOne(id: string) {
     const department = await this.requireDepartment(id);
     await department.populate([
-      { path: 'levelId', select: 'code name rank isMissionUnit' },
       { path: 'parentId', select: 'code name' },
     ]);
     return department;
@@ -130,15 +121,6 @@ export class DepartmentsService {
     if (dto.name !== undefined) {
       department.name = dto.name.trim();
       department.slug = Helper.slugify(dto.name);
-    }
-
-    if (dto.levelId !== undefined) {
-      if (!dto.levelId) {
-        department.set('levelId', undefined);
-      } else {
-        await this.departmentLevelsService.findOne(dto.levelId);
-        department.levelId = new Types.ObjectId(dto.levelId);
-      }
     }
 
     if (dto.sortOrder !== undefined) {
@@ -208,7 +190,7 @@ export class DepartmentsService {
   }
 
   /**
-   * Import theo mã (code / parentCode / levelCode).
+   * Import theo mã (code / parentCode).
    * Tạo theo thứ tự phụ thuộc: đơn vị cha trước đơn vị con.
    * Mã đã tồn tại → bỏ qua (không ghi đè).
    */
@@ -223,9 +205,6 @@ export class DepartmentsService {
       parentCode: row.parentCode
         ? String(row.parentCode).trim().toUpperCase()
         : undefined,
-      levelCode: row.levelCode
-        ? String(row.levelCode).trim().toUpperCase()
-        : undefined,
       sortOrder: row.sortOrder ?? 0,
       isActive: row.isActive ?? true,
     }));
@@ -233,16 +212,6 @@ export class DepartmentsService {
     const existing = await this.departmentModel.find().select('_id code');
     const codeToId = new Map(
       existing.map((d) => [d.code.toUpperCase(), d._id.toString()]),
-    );
-
-    const levelsResult = await this.departmentLevelsService.findAll(
-      Object.assign(new PaginationQueryDto(), { all: true }),
-    );
-    const levelCodeToId = new Map(
-      levelsResult.data.map((level) => [
-        String(level.code).toUpperCase(),
-        level._id.toString(),
-      ]),
     );
 
     const pending = [...normalized];
@@ -297,28 +266,11 @@ export class DepartmentsService {
           continue;
         }
 
-        let levelId: string | undefined;
-        if (row.levelCode) {
-          levelId = levelCodeToId.get(row.levelCode);
-          if (!levelId) {
-            results.push({
-              row: row.index,
-              code: row.code,
-              status: 'error',
-              message: `Không tìm thấy cấp đơn vị "${row.levelCode}".`,
-            });
-            pending.splice(i, 1);
-            progressed = true;
-            continue;
-          }
-        }
-
         try {
           const created = await this.create({
             code: row.code,
             name: row.name,
             parentId: row.parentCode ? codeToId.get(row.parentCode) : undefined,
-            levelId,
             sortOrder: row.sortOrder,
             isActive: row.isActive,
           });

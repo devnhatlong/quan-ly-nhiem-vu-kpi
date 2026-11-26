@@ -6,35 +6,6 @@ export type {
   PaginationMeta,
 } from "@/features/auth/types";
 
-export type DepartmentLevel = {
-  _id: string;
-  id?: string;
-  code: string;
-  name: string;
-  rank: number;
-  isActive: boolean;
-  /** Cấp này là đơn vị thật (Phòng, Xã...) hay chỉ gom nhóm (Khối). */
-  isMissionUnit?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-};
-
-export type CreateDepartmentLevelInput = {
-  code: string;
-  name: string;
-  rank: number;
-  isActive?: boolean;
-  isMissionUnit?: boolean;
-};
-
-export type UpdateDepartmentLevelInput = {
-  code?: string;
-  name?: string;
-  rank?: number;
-  isActive?: boolean;
-  isMissionUnit?: boolean;
-};
-
 export type AppPermission = {
   _id: string;
   id?: string;
@@ -109,7 +80,6 @@ export type Department = {
   code: string;
   name: string;
   slug?: string;
-  levelId?: DepartmentLevel | string | null;
   parentId?: DepartmentRef | string | null;
   ancestors: string[];
   path: string;
@@ -123,7 +93,6 @@ export type Department = {
 export type CreateDepartmentInput = {
   code: string;
   name: string;
-  levelId?: string;
   parentId?: string;
   sortOrder?: number;
   isActive?: boolean;
@@ -132,7 +101,6 @@ export type CreateDepartmentInput = {
 export type UpdateDepartmentInput = {
   code?: string;
   name?: string;
-  levelId?: string | null;
   parentId?: string | null;
   sortOrder?: number;
   isActive?: boolean;
@@ -142,7 +110,6 @@ export type ImportDepartmentRow = {
   code: string;
   name: string;
   parentCode?: string;
-  levelCode?: string;
   sortOrder?: number;
   isActive?: boolean;
 };
@@ -247,11 +214,6 @@ export function entityId(
   if (!entity) return "";
   if (typeof entity === "string") return entity;
   return String(entity.id ?? entity._id ?? "");
-}
-
-export function levelOf(dept: Department): DepartmentLevel | null {
-  if (!dept.levelId || typeof dept.levelId === "string") return null;
-  return dept.levelId;
 }
 
 export function parentOf(dept: Department): DepartmentRef | null {

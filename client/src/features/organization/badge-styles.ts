@@ -29,35 +29,9 @@ function hashSeed(seed: string): number {
   return Math.abs(h);
 }
 
-/** Cấp gom nhóm (Khối) - xám để tách khỏi đơn vị thật trong cây. */
-export const groupLevelBadgeClass =
-  "border-transparent bg-slate-500 text-white dark:bg-slate-600";
-
-/** Màu badge theo cấp đơn vị (rank). */
-export function levelBadgeClass(rank?: number) {
-  if (rank == null) return CODE_PALETTE[2];
-  switch (rank) {
-    case 1:
-      return CODE_PALETTE[7]; // CAT
-    case 2:
-      return groupLevelBadgeClass; // KHOI - gom nhóm
-    case 3:
-      return CODE_PALETTE[0]; // PHONG
-    case 4:
-      return CODE_PALETTE[1]; // DOI
-    case 5:
-      return CODE_PALETTE[2]; // TO
-    case 6:
-      return CODE_PALETTE[3]; // XA
-    case 7:
-      return CODE_PALETTE[4]; // PHUONG
-    case 8:
-      return CODE_PALETTE[5]; // DON
-    case 9:
-      return CODE_PALETTE[6]; // DK
-    default:
-      return CODE_PALETTE[hashSeed(String(rank)) % CODE_PALETTE.length];
-  }
+/** Màu badge mã đơn vị theo độ sâu trong cây (0 = gốc). */
+export function depthBadgeClass(depth = 0) {
+  return CODE_PALETTE[(depth + 7) % CODE_PALETTE.length];
 }
 
 /** Màu badge mã (vai trò / quyền / mã bất kỳ) - ổn định theo chuỗi. */
