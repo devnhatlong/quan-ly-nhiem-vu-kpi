@@ -3,8 +3,12 @@ import type { NextConfig } from "next";
 /*
   Header bảo mật cho mọi trang. CSP chỉ khoá những thứ không làm gãy gì:
   không cho trang bị nhúng vào site khác (chống clickjacking), không plugin,
-  không đổi <base>. Chưa siết script-src - Next chèn script inline và editor
-  OnlyOffice nạp từ Document Server, siết phải đi kèm nonce.
+  không đổi <base>. Chưa siết script-src - Next chèn script inline, siết phải
+  đi kèm nonce.
+
+  object-src cho phép 'self' và blob:: trình xem PDF có sẵn của trình duyệt
+  chạy như một plugin, chặn hết ('none') thì tệp PDF đính kèm mở ra trắng
+  trang. Chỉ mở cho tệp của chính trang (blob tạo từ tệp đã tải về).
 */
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -12,7 +16,7 @@ const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
     key: "Content-Security-Policy",
-    value: "frame-ancestors 'self'; object-src 'none'; base-uri 'self'",
+    value: "frame-ancestors 'self'; object-src 'self' blob:; base-uri 'self'",
   },
 ];
 

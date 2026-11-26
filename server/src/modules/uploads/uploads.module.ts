@@ -3,8 +3,6 @@ import { AuthsModule } from '../auth/auth.module';
 import { UploadsController } from './uploads.controller';
 import { UploadsService } from './uploads.service';
 import { UploadAccessService } from './upload-access.service';
-import { OnlyOfficeController } from './onlyoffice.controller';
-import { OnlyOfficeService } from './onlyoffice.service';
 
 /**
  * Tệp nằm trong GridFS nên module này không đăng ký schema nào -
@@ -12,8 +10,8 @@ import { OnlyOfficeService } from './onlyoffice.service';
  */
 @Module({
   imports: [forwardRef(() => AuthsModule)],
-  controllers: [UploadsController, OnlyOfficeController],
-  providers: [UploadsService, UploadAccessService, OnlyOfficeService],
+  controllers: [UploadsController],
+  providers: [UploadsService, UploadAccessService],
   exports: [UploadsService],
 })
 export class UploadsModule {}

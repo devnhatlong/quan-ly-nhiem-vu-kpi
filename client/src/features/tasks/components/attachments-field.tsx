@@ -9,11 +9,13 @@ import {
   ClassificationBadge,
   ClassificationSelect,
 } from "@/features/uploads/components/classification-select";
-import { OnlyOfficeViewer } from "@/features/uploads/components/onlyoffice-viewer";
+import {
+  FileViewer,
+  canPreview,
+} from "@/features/uploads/components/file-viewer";
 import {
   ACCEPT_UPLOAD,
   MAX_UPLOAD_BYTES,
-  canOpenInOnlyOffice,
   downloadAttachment,
   uploadFile,
   type DocumentClassification,
@@ -26,7 +28,7 @@ function sizeLabel(bytes: number) {
   return `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
-/** Danh sách tệp: xem trực tiếp (OnlyOffice) / tải về / bỏ. */
+/** Danh sách tệp: xem trực tiếp trên trình duyệt / tải về / bỏ. */
 export function AttachmentList({
   items,
   onRemove,
@@ -52,7 +54,7 @@ export function AttachmentList({
             <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
               {sizeLabel(file.size)}
             </span>
-            {canOpenInOnlyOffice(file.name) ? (
+            {canPreview(file.name) ? (
               <Button
                 type="button"
                 variant="ghost"
@@ -93,7 +95,7 @@ export function AttachmentList({
           </li>
         ))}
       </ul>
-      <OnlyOfficeViewer file={viewing} onClose={() => setViewing(null)} />
+      <FileViewer file={viewing} onClose={() => setViewing(null)} />
     </>
   );
 }
