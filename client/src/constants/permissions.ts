@@ -16,6 +16,11 @@ export const PERM = {
 
   SUPERVISION_MANAGE: "supervision.manage",
 
+  TASK_VIEW: "task.view",
+  TASK_ASSIGN: "task.assign",
+  TASK_SELF_REPORT: "task.self_report",
+  TASK_REVIEW: "task.review",
+
   SYSTEM_CONFIG: "system.config",
 } as const;
 

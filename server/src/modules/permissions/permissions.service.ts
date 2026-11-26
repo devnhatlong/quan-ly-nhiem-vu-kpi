@@ -64,7 +64,38 @@ const SYSTEM_PERMISSIONS: Array<{
     name: 'Phân công phụ trách',
     module: 'supervision',
     sortOrder: 60,
-    description: 'Menu Tổ chức › Phân công phụ trách: chọn Phó ban phụ trách từng trợ lý',
+    description:
+      'Menu Tổ chức › Phân công phụ trách: chọn Phó ban phụ trách từng trợ lý',
+  },
+  {
+    code: Permission.TASK_VIEW,
+    name: 'Nhiệm vụ - xem',
+    module: 'task',
+    sortOrder: 70,
+    description: 'Menu Nhiệm vụ: xem nhiệm vụ trong phạm vi của mình',
+  },
+  {
+    code: Permission.TASK_ASSIGN,
+    name: 'Nhiệm vụ - giao việc',
+    module: 'task',
+    sortOrder: 75,
+    description:
+      'Giao nhiệm vụ cho Phó ban / trợ lý (Phó ban: chỉ trợ lý mình phụ trách)',
+  },
+  {
+    code: Permission.TASK_SELF_REPORT,
+    name: 'Nhiệm vụ - tự khai gửi lên',
+    module: 'task',
+    sortOrder: 80,
+    description:
+      'Lập bản tự khai nhiệm vụ phát sinh / việc đã làm, gửi cấp trên duyệt',
+  },
+  {
+    code: Permission.TASK_REVIEW,
+    name: 'Nhiệm vụ - duyệt',
+    module: 'task',
+    sortOrder: 85,
+    description: 'Duyệt, trả lại bản gửi lên (Phó ban bước 1, Trưởng ban chốt)',
   },
   {
     code: Permission.SYSTEM_CONFIG,

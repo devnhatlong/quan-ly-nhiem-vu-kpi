@@ -11,10 +11,7 @@ import { Model, Types } from 'mongoose';
 
 import { Role, RoleDocument } from './schemas/role.schema';
 import { Permission } from '@/common/enums/permission.enum';
-import {
-  RETIRED_ROLE_CODES,
-  RoleCode,
-} from '@/common/enums/role-code.enum';
+import { RETIRED_ROLE_CODES, RoleCode } from '@/common/enums/role-code.enum';
 import { Helper } from '@/ultis/helpers';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
@@ -48,19 +45,31 @@ const SYSTEM_ROLES: Array<{
     sortOrder: 20,
     // Không có ROLE_ASSIGN / USER_MANAGE: quản lý tài khoản là việc của quản
     // trị hệ thống. Quyền nghiệp vụ (giao, xác nhận nhiệm vụ...) thêm sau.
-    permissions: [...BASE_PERMISSIONS, Permission.SUPERVISION_MANAGE],
+    permissions: [
+      ...BASE_PERMISSIONS,
+      Permission.SUPERVISION_MANAGE,
+      Permission.TASK_VIEW,
+      Permission.TASK_ASSIGN,
+      Permission.TASK_REVIEW,
+    ],
   },
   {
     code: RoleCode.DEPUTY,
     name: 'Phó ban',
     sortOrder: 30,
-    permissions: BASE_PERMISSIONS,
+    permissions: [
+      ...BASE_PERMISSIONS,
+      Permission.TASK_VIEW,
+      Permission.TASK_ASSIGN,
+      Permission.TASK_SELF_REPORT,
+      Permission.TASK_REVIEW,
+    ],
   },
   {
     code: RoleCode.ASSISTANT,
     name: 'Trợ lý',
     sortOrder: 40,
-    permissions: [],
+    permissions: [Permission.TASK_VIEW, Permission.TASK_SELF_REPORT],
   },
 ];
 
@@ -73,6 +82,16 @@ const SYSTEM_ROLES: Array<{
  */
 const GRANTED_PERMISSIONS: Array<{ code: Permission; roles: RoleCode[] }> = [
   { code: Permission.SUPERVISION_MANAGE, roles: [RoleCode.HEAD] },
+  {
+    code: Permission.TASK_VIEW,
+    roles: [RoleCode.HEAD, RoleCode.DEPUTY, RoleCode.ASSISTANT],
+  },
+  { code: Permission.TASK_ASSIGN, roles: [RoleCode.HEAD, RoleCode.DEPUTY] },
+  {
+    code: Permission.TASK_SELF_REPORT,
+    roles: [RoleCode.DEPUTY, RoleCode.ASSISTANT],
+  },
+  { code: Permission.TASK_REVIEW, roles: [RoleCode.HEAD, RoleCode.DEPUTY] },
 ];
 
 @Injectable()
@@ -104,10 +123,9 @@ export class RolesService implements OnModuleInit {
     if (!deletedCount) return;
     await this.roleModel.db
       .collection('users')
-      .updateMany(
-        { 'roleAssignments.roleCode': { $in: codes } },
-        { $pull: { roleAssignments: { roleCode: { $in: codes } } } } as never,
-      );
+      .updateMany({ 'roleAssignments.roleCode': { $in: codes } }, {
+        $pull: { roleAssignments: { roleCode: { $in: codes } } },
+      } as never);
   }
 
   /**

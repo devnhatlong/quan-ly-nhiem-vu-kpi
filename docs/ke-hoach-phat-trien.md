@@ -31,9 +31,9 @@ Thứ tự theo phụ thuộc: mọi phân hệ đều đọc dữ liệu nhiệ
 Đã có: đăng nhập, phiên, khoá đăng nhập sai, đổi mật khẩu, người dùng, đơn vị, vai trò, quyền, thông báo, tải tệp + xem trực tuyến, 4 vai trò `SUPER_ADMIN`, `HEAD`, `DEPUTY`, `ASSISTANT`.
 
 Còn làm:
-- [ ] Bộ quyền nghiệp vụ (giao việc, xác nhận, xem toàn bộ, xem KPI...) gán cho 3 vai trò theo §13.
+- [x] Bộ quyền nhiệm vụ `task.view / assign / self_report / review` gán cho Trưởng ban, Phó ban, trợ lý. (Quyền KPI làm ở giai đoạn 5.)
 - [x] Phạm vi của Phó ban: trang Tổ chức › Phân công phụ trách - mỗi trợ lý một Phó ban phụ trách, hoặc Trưởng ban trực tiếp. Trưởng ban chỉnh trong Ban mình.
-- [ ] `SUPER_ADMIN` chỉ quản trị kỹ thuật, không xem nội dung nhiệm vụ (sửa guard đang bỏ qua mọi kiểm tra cho vai trò này).
+- [x] `SUPER_ADMIN` không xem nội dung nhiệm vụ (module nhiệm vụ chỉ mở cho Trưởng ban, Phó ban, trợ lý). Các module khác vẫn để guard bỏ qua cho vai trò này.
 - [ ] Tạo quản trị đầu tiên từ `.env`, bỏ route đăng ký công khai.
 - [ ] Tài khoản riêng cho màn hình TV, chỉ đọc (§9, §13).
 
@@ -41,12 +41,14 @@ Còn làm:
 
 Xương sống của hệ thống - các trường theo §5.
 
-- [ ] Mô hình nhiệm vụ: mã tự sinh theo đơn vị và năm (VD `TMKH-2026-001`), nội dung, người giao, chủ trì (1 người), phối hợp (nhiều người), căn cứ, loại (thường xuyên / đột xuất / trọng tâm), mức ưu tiên (bình thường / cao / rất cao), ngày giao, hạn hoàn thành, tiến độ, trạng thái, kết quả, đính kèm, ngày hoàn thành, người xác nhận, đánh giá. Chừa sẵn trường "thuộc kế hoạch" cho giai đoạn 7.
-- [ ] Lịch sử thay đổi chỉ ghi thêm: ai, lúc nào, sửa trường gì, từ giá trị nào thành giá trị nào (§5, §13). Không ai xoá được lịch sử.
-- [ ] Không xoá nhiệm vụ - huỷ kèm lý do.
-- [ ] Trưởng ban, Phó ban giao việc; trợ lý bổ sung việc phát sinh (§2).
-- [ ] Màn hình: danh sách (lọc theo trạng thái, loại, người, hạn), tạo / sửa, chi tiết kèm dòng thời gian lịch sử.
-- [ ] Phân quyền xem: Trưởng ban tất cả, Phó ban trong phạm vi, trợ lý việc mình chủ trì hoặc phối hợp.
+- [x] Mô hình nhiệm vụ: mã tự sinh theo đơn vị và năm (VD `TMKH-2026-001`), nội dung, người giao, chủ trì (1 người), phối hợp (nhiều người), căn cứ, loại (thường xuyên / đột xuất / trọng tâm), mức ưu tiên (bình thường / cao / rất cao), ngày giao, hạn hoàn thành, tiến độ, trạng thái, kết quả, đính kèm, ngày hoàn thành, người xác nhận, đánh giá.
+- [x] Lịch sử thay đổi chỉ ghi thêm: ai, lúc nào, sửa trường gì, từ giá trị nào thành giá trị nào (§5, §13). Không ai xoá được lịch sử.
+- [x] Không xoá nhiệm vụ - huỷ kèm lý do (người giao / Trưởng ban; người lập rút lại bản tự khai khi chưa ai duyệt).
+- [x] Trưởng ban, Phó ban giao việc (Phó ban chỉ cho trợ lý mình phụ trách); trợ lý / Phó ban tự khai, duyệt 2 cấp, Trưởng ban chốt, trả lại 2 hướng (docs/xac-nhan-nghiep-vu.md).
+- [x] Màn hình: danh sách theo tab (Của tôi / Tôi giao / Chờ tôi duyệt / Toàn Ban), tìm theo mã - nội dung - căn cứ, lọc trạng thái; giao / tự khai / sửa; chi tiết kèm dòng thời gian lịch sử.
+- [ ] Lọc thêm theo loại, người, khoảng hạn.
+- [ ] Trường "thuộc kế hoạch" - làm cùng giai đoạn 7.
+- [x] Phân quyền xem: Trưởng ban tất cả, Phó ban trong phạm vi, trợ lý việc mình chủ trì hoặc phối hợp.
 
 ## Giai đoạn 2 - Phân hệ 3 + 6: Tiến độ, báo cáo kết quả, xác nhận (≈4 ngày)
 

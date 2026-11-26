@@ -34,6 +34,11 @@ export type MultiSelectOption = {
    * tích được. Tích cha KHÔNG kéo theo con - mỗi dòng là một lựa chọn riêng.
    */
   selectable?: boolean;
+  /**
+   * Nhãn màu đứng sau tên (VD chức vụ) - phân biệt nhanh bằng mắt. Màu luôn
+   * đi kèm chữ, không phải kênh thông tin duy nhất.
+   */
+  tag?: { label: string; className?: string };
 };
 
 type MultiSelectProps = {
@@ -158,6 +163,7 @@ export function MultiSelect({
                   option.label,
                   option.hint,
                   option.keywords,
+                  option.tag?.label,
                   option.value,
                 ]
                   .filter(Boolean)
@@ -203,6 +209,16 @@ export function MultiSelect({
                         </span>
                       ) : null}
                     </span>
+                    {option.tag ? (
+                      <span
+                        className={cn(
+                          "shrink-0 rounded px-1.5 py-px text-[10px] font-medium leading-4",
+                          option.tag.className ?? "bg-muted text-muted-foreground",
+                        )}
+                      >
+                        {option.tag.label}
+                      </span>
+                    ) : null}
                   </CommandItem>
                 );
               })}

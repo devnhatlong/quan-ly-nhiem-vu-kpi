@@ -11,10 +11,7 @@ import {
 import { Type } from 'class-transformer';
 
 import { IsRank } from '@/common/enums/rank.enum';
-import {
-  BooleanNotRequired,
-  StringNotRequired,
-} from '@/common/decorators';
+import { BooleanNotRequired, StringNotRequired } from '@/common/decorators';
 
 export class RoleAssignmentDto {
   @ApiProperty({ example: 'ASSISTANT' })
@@ -28,7 +25,9 @@ export class RoleAssignmentDto {
     description: 'null = toàn hệ thống; ObjectId = phạm vi đơn vị',
   })
   @IsOptional()
-  @ValidateIf((_, value) => value !== null && value !== undefined && value !== '')
+  @ValidateIf(
+    (_, value) => value !== null && value !== undefined && value !== '',
+  )
   @IsMongoId({ message: 'Mã đơn vị phạm vi không hợp lệ.' })
   scopeDepartmentId?: string | null;
 }

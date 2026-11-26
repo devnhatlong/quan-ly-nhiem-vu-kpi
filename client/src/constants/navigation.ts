@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  ClipboardList,
   Gauge,
   KeyRound,
   Network,
@@ -47,6 +48,12 @@ export const NAV_ITEMS: NavItem[] = [
     title: "Tổng quan",
     href: "/dashboard",
     icon: Gauge,
+  },
+  {
+    title: "Giao nhiệm vụ",
+    href: "/tasks",
+    icon: ClipboardList,
+    permissions: [PERM.TASK_VIEW],
   },
   {
     title: "Tổ chức",

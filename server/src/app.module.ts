@@ -15,6 +15,7 @@ import { RolesModule } from './modules/roles/roles.module';
 import { PermissionsModule } from './modules/permissions/permissions.module';
 import { SystemModule } from './modules/system/system.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
+import { TasksModule } from './modules/tasks/tasks.module';
 import { SupervisionModule } from './modules/supervision/supervision.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { mongooseConfig } from './config/database.config';
@@ -49,6 +50,7 @@ import type { SignOptions } from 'jsonwebtoken';
     PermissionsModule,
     SystemModule,
     SupervisionModule,
+    TasksModule,
     NotificationsModule,
     UploadsModule,
   ],

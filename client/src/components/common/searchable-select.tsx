@@ -34,6 +34,11 @@ export type SearchableSelectOption = {
   keywords?: string;
   /** Cấp trong cây (0 = gốc) - thụt lề để đọc ra cha / con. */
   depth?: number;
+  /**
+   * Nhãn màu đứng sau tên (VD chức vụ) - phân biệt nhanh bằng mắt. Màu luôn
+   * đi kèm chữ, không phải kênh thông tin duy nhất.
+   */
+  tag?: { label: string; className?: string };
 };
 
 type SearchableSelectProps = {
@@ -95,7 +100,19 @@ export function SearchableSelect({
             triggerClassName,
           )}
         >
-          <span className="truncate">{selected?.label ?? placeholder}</span>
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate">{selected?.label ?? placeholder}</span>
+            {selected?.tag ? (
+              <span
+                className={cn(
+                  "shrink-0 rounded px-1.5 py-px text-[10px] font-medium leading-4",
+                  selected.tag.className ?? "bg-muted text-muted-foreground",
+                )}
+              >
+                {selected.tag.label}
+              </span>
+            ) : null}
+          </span>
           <ChevronsUpDown
             className="size-4 shrink-0 opacity-50"
             aria-hidden="true"
@@ -124,6 +141,7 @@ export function SearchableSelect({
                   // Bản không dấu - gõ "bao cao" vẫn ra "Báo cáo".
                   foldDiacritics(option.label),
                   option.keywords,
+                  option.tag?.label,
                   option.value,
                 ]
                   .filter(Boolean)
@@ -154,6 +172,16 @@ export function SearchableSelect({
                     >
                       {option.label}
                     </span>
+                    {option.tag ? (
+                      <span
+                        className={cn(
+                          "shrink-0 rounded px-1.5 py-px text-[10px] font-medium leading-4",
+                          option.tag.className ?? "bg-muted text-muted-foreground",
+                        )}
+                      >
+                        {option.tag.label}
+                      </span>
+                    ) : null}
                   </CommandItem>
                 );
               })}
