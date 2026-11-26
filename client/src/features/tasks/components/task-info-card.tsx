@@ -3,8 +3,10 @@ import {
   CalendarCheck,
   CalendarClock,
   CalendarPlus,
+  CheckCheck,
   Flag,
   FileText,
+  Forward,
   Layers,
   UserCheck,
   UserCog,
@@ -16,7 +18,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import {
   PRIORITY_LABELS,
+  handlerOf,
+  isForwarded,
+  partDoneOf,
   personName,
+  rolePersonTag,
   type Task,
   type TaskPerson,
   type TaskPriority,
@@ -78,22 +84,18 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function initials(p: TaskPerson) {
-  const parts = (p.fullName?.trim() || p.username).split(/\s+/).filter(Boolean);
-  return parts.length >= 2
-    ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
-    : (parts[0] ?? "?").slice(0, 2).toUpperCase();
-}
-
-/** Vòng chữ viết tắt + cấp bậc, họ tên - nhìn là nhận ra người. */
+/** Cấp bậc, họ tên + nhãn chức vụ màu theo vai trò. */
 function PersonChip({ person }: { person?: TaskPerson | null }) {
   if (!person) return <span className="font-normal text-muted-foreground">-</span>;
+  const tag = rolePersonTag(person);
   return (
     <span className="inline-flex max-w-full items-center gap-2">
-      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
-        {initials(person)}
-      </span>
       <span className="truncate">{personName(person)}</span>
+      {tag ? (
+        <span className={cn("shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold", tag.className)}>
+          {tag.label}
+        </span>
+      ) : null}
     </span>
   );
 }
@@ -154,12 +156,35 @@ export function TaskInfoCard({ task }: { task: Task }) {
           <InfoItem icon={UserCheck} label="Chủ trì" tone="sky">
             <PersonChip person={task.ownerId} />
           </InfoItem>
+          {isForwarded(task) ? (
+            <InfoItem icon={Forward} label="Xử lý chính (được chuyển tiếp)" tone="violet">
+              <PersonChip person={handlerOf(task)} />
+            </InfoItem>
+          ) : null}
           <InfoItem icon={Users} label="Phối hợp" tone="sky">
             {task.collaboratorIds.length ? (
               <span className="flex flex-col gap-1.5">
-                {task.collaboratorIds.map((p) => (
-                  <PersonChip key={p._id} person={p} />
-                ))}
+                {task.collaboratorIds.map((p) => {
+                  const done = partDoneOf(task, p._id);
+                  return (
+                    <span key={p._id} className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+                      <PersonChip person={p} />
+                      {done ? (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
+                          title={done.note || undefined}
+                        >
+                          <CheckCheck className="size-3" />
+                          Xong {serverDayjs(done.at).format("DD/MM")}
+                        </span>
+                      ) : task.status === "IN_PROGRESS" ? (
+                        <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                          Đang làm
+                        </span>
+                      ) : null}
+                    </span>
+                  );
+                })}
               </span>
             ) : (
               <span className="font-normal text-muted-foreground">Không có</span>

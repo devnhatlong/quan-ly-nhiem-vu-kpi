@@ -28,6 +28,7 @@ import {
   TYPE_LABELS,
   approveTask,
   cancelTask,
+  handlerOf,
   personName,
   returnTask,
   type ReturnTarget,
@@ -95,6 +96,9 @@ export function ApproveDialog(props: DialogProps) {
 
 function ApproveForm({ task, onOpenChange, onDone }: DialogProps) {
   const final = task.review?.stage === "HEAD";
+  // Xác nhận hoàn thành: chỉ chấm đánh giá, loại / mức độ đã có từ lúc giao.
+  const completion = task.review?.kind === "COMPLETION";
+  const needEvaluation = completion || task.reportedDone;
   const [type, setType] = useState<TaskType | "">(task.proposal?.type ?? "");
   const [priority, setPriority] = useState<TaskPriority | "">(task.proposal?.priority ?? "");
   const [evaluation, setEvaluation] = useState<TaskEvaluation | "">(
@@ -104,14 +108,15 @@ function ApproveForm({ task, onOpenChange, onDone }: DialogProps) {
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
-    if (!type || !priority) return toast.error("Vui lòng chọn loại nhiệm vụ và mức độ ưu tiên.");
-    if (task.reportedDone && !evaluation) return toast.error("Vui lòng chọn mức đánh giá.");
+    if (!completion && (!type || !priority))
+      return toast.error("Vui lòng chọn loại nhiệm vụ và mức độ ưu tiên.");
+    if (needEvaluation && !evaluation) return toast.error("Vui lòng chọn mức đánh giá.");
     setSaving(true);
     try {
       const res = await approveTask(task._id, {
-        type,
-        priority,
-        evaluation: task.reportedDone && evaluation ? evaluation : undefined,
+        type: completion || !type ? undefined : type,
+        priority: completion || !priority ? undefined : priority,
+        evaluation: needEvaluation && evaluation ? evaluation : undefined,
         note: note.trim() || undefined,
       });
       toast.success(res.message);
@@ -127,9 +132,21 @@ function ApproveForm({ task, onOpenChange, onDone }: DialogProps) {
   return (
     <>
       <DialogHeader>
-        <DialogTitle>{final ? "Trưởng ban chốt" : "Duyệt bước 1"}</DialogTitle>
+        <DialogTitle>
+          {completion
+            ? final
+              ? "Trưởng ban xác nhận hoàn thành"
+              : "Xác nhận hoàn thành - bước 1"
+            : final
+              ? "Trưởng ban chốt"
+              : "Duyệt bước 1"}
+        </DialogTitle>
         <DialogDescription>
-          {final
+          {completion
+            ? final
+              ? "Chốt kết quả và mức đánh giá. Có thể sửa mức Phó ban đề xuất."
+              : "Đề xuất mức đánh giá; nhiệm vụ chuyển Trưởng ban chốt."
+            : final
             ? task.reportedDone
               ? "Chốt xác nhận việc đã hoàn thành. Có thể sửa đề xuất của Phó ban."
               : "Chốt để nhiệm vụ chuyển sang Đang thực hiện. Có thể sửa đề xuất của Phó ban."
@@ -137,11 +154,18 @@ function ApproveForm({ task, onOpenChange, onDone }: DialogProps) {
         </DialogDescription>
       </DialogHeader>
       <div className="grid gap-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <EnumSelect label="Loại nhiệm vụ" value={type} onChange={setType} labels={TYPE_LABELS} placeholder="Chọn loại" />
-          <EnumSelect label="Mức độ ưu tiên" value={priority} onChange={setPriority} labels={PRIORITY_LABELS} placeholder="Chọn mức độ" />
-        </div>
-        {task.reportedDone ? (
+        {completion ? (
+          <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+            <div className="text-xs font-medium text-muted-foreground">Kết quả báo cáo</div>
+            <p className="mt-0.5 whitespace-pre-line">{task.result || "-"}</p>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <EnumSelect label="Loại nhiệm vụ" value={type} onChange={setType} labels={TYPE_LABELS} placeholder="Chọn loại" />
+            <EnumSelect label="Mức độ ưu tiên" value={priority} onChange={setPriority} labels={PRIORITY_LABELS} placeholder="Chọn mức độ" />
+          </div>
+        )}
+        {needEvaluation ? (
           <EnumSelect
             label={final ? "Đánh giá kết quả" : "Đề xuất đánh giá"}
             value={evaluation}
@@ -160,7 +184,13 @@ function ApproveForm({ task, onOpenChange, onDone }: DialogProps) {
           Huỷ
         </Button>
         <Button onClick={() => void submit()} disabled={saving}>
-          {saving ? "Đang lưu..." : final ? "Chốt" : "Duyệt, chuyển Trưởng ban"}
+          {saving
+            ? "Đang lưu..."
+            : final
+              ? "Chốt"
+              : completion
+                ? "Xác nhận, chuyển Trưởng ban"
+                : "Duyệt, chuyển Trưởng ban"}
         </Button>
       </DialogFooter>
     </>
@@ -203,10 +233,16 @@ function ReturnForm({ task, targets, onOpenChange, onDone }: DialogProps & { tar
       `Về Phó ban ${personName(task.review?.deputyId)}`,
       "Phó ban xem lại rồi duyệt lại, hoặc trả tiếp về người lập",
     ],
-    START: [
-      `Về người lập ${personName(task.createdById)}`,
-      "Người lập sửa và gửi lại từ đầu",
-    ],
+    START:
+      task.review?.kind === "COMPLETION"
+        ? [
+            `Về người xử lý chính ${personName(handlerOf(task))}`,
+            "Nhiệm vụ quay lại Đang thực hiện; làm tiếp rồi báo cáo lại",
+          ]
+        : [
+            `Về người lập ${personName(task.createdById)}`,
+            "Người lập sửa và gửi lại từ đầu",
+          ],
   };
 
   return (

@@ -18,7 +18,12 @@ import { JwtGuard } from '../auth/guards/jwt.guard';
 import {
   ApproveTaskDto,
   CancelTaskDto,
+  CommentTaskDto,
   CreateAssignedTaskDto,
+  ForwardTaskDto,
+  PartDoneDto,
+  ProgressTaskDto,
+  ReportDoneDto,
   ReturnTaskDto,
   SelfReportDto,
   TaskListQueryDto,
@@ -67,6 +72,15 @@ export class TasksController {
   @Get('people/self-report')
   selfReportPeople(@CurrentUser() user: JwtPayloadUser) {
     return this.tasks.people(user, 'self-report');
+  }
+
+  @ApiOperation({
+    summary: 'Trợ lý chọn được làm người xử lý chính khi chuyển tiếp',
+  })
+  @Permissions(Permission.TASK_ASSIGN)
+  @Get('people/forward')
+  forwardPeople(@CurrentUser() user: JwtPayloadUser) {
+    return this.tasks.people(user, 'forward');
   }
 
   @ApiOperation({ summary: 'Chi tiết + lịch sử + các thao tác được phép' })
@@ -151,6 +165,79 @@ export class TasksController {
     @Body() dto: ReturnTaskDto,
   ) {
     return this.tasks.returnTask(user, id, dto);
+  }
+
+  @ApiOperation({
+    summary: 'Chủ trì (Phó ban) chuyển tiếp cho trợ lý xử lý chính',
+  })
+  @Permissions(Permission.TASK_ASSIGN)
+  @Post(':id/forward')
+  forward(
+    @CurrentUser() user: JwtPayloadUser,
+    @Param('id') id: string,
+    @Body() dto: ForwardTaskDto,
+  ) {
+    return this.tasks.forward(user, id, dto);
+  }
+
+  @ApiOperation({ summary: 'Chủ trì thu hồi quyền xử lý chính' })
+  @Permissions(Permission.TASK_ASSIGN)
+  @Post(':id/recall')
+  recall(@CurrentUser() user: JwtPayloadUser, @Param('id') id: string) {
+    return this.tasks.recall(user, id);
+  }
+
+  @ApiOperation({ summary: 'Người xử lý chính cập nhật tiến độ' })
+  @Permissions(Permission.TASK_VIEW)
+  @Post(':id/progress')
+  progress(
+    @CurrentUser() user: JwtPayloadUser,
+    @Param('id') id: string,
+    @Body() dto: ProgressTaskDto,
+  ) {
+    return this.tasks.updateProgress(user, id, dto);
+  }
+
+  @ApiOperation({ summary: 'Người xử lý chính báo cáo hoàn thành' })
+  @Permissions(Permission.TASK_VIEW)
+  @Post(':id/report')
+  report(
+    @CurrentUser() user: JwtPayloadUser,
+    @Param('id') id: string,
+    @Body() dto: ReportDoneDto,
+  ) {
+    return this.tasks.reportDone(user, id, dto);
+  }
+
+  @ApiOperation({ summary: 'Cho ý kiến trên dòng thời gian' })
+  @Permissions(Permission.TASK_VIEW)
+  @Post(':id/comments')
+  comment(
+    @CurrentUser() user: JwtPayloadUser,
+    @Param('id') id: string,
+    @Body() dto: CommentTaskDto,
+  ) {
+    return this.tasks.comment(user, id, dto);
+  }
+
+  @ApiOperation({
+    summary: 'Người phối hợp đánh dấu xong phần việc của mình',
+  })
+  @Permissions(Permission.TASK_VIEW)
+  @Post(':id/part-done')
+  partDone(
+    @CurrentUser() user: JwtPayloadUser,
+    @Param('id') id: string,
+    @Body() dto: PartDoneDto,
+  ) {
+    return this.tasks.markPart(user, id, true, dto);
+  }
+
+  @ApiOperation({ summary: 'Người phối hợp bỏ đánh dấu xong' })
+  @Permissions(Permission.TASK_VIEW)
+  @Post(':id/part-undone')
+  partUndone(@CurrentUser() user: JwtPayloadUser, @Param('id') id: string) {
+    return this.tasks.markPart(user, id, false, null);
   }
 
   @ApiOperation({ summary: 'Huỷ kèm lý do (không bao giờ xoá)' })

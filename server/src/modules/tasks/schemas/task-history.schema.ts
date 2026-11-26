@@ -2,6 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 
 import { HISTORY_ACTIONS, type HistoryAction } from '../task.constants';
+import { TaskAttachment, TaskAttachmentSchema } from './task.schema';
 
 /** Một trường bị đổi - giá trị chụp sẵn thành chữ (tên người, nhãn tiếng Việt). */
 @Schema({ _id: false })
@@ -44,6 +45,10 @@ export class TaskHistory {
 
   @Prop({ type: [FieldChangeSchema], default: [] })
   changes!: FieldChange[];
+
+  /** Tệp kèm ý kiến / cập nhật tiến độ / báo cáo hoàn thành. */
+  @Prop({ type: [TaskAttachmentSchema], default: [] })
+  attachments!: TaskAttachment[];
 
   @Prop({ type: Date, required: true, default: () => new Date() })
   at!: Date;

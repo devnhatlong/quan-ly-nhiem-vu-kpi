@@ -30,7 +30,12 @@ import {
 import {
   ApproveTaskDto,
   CancelTaskDto,
+  CommentTaskDto,
   CreateAssignedTaskDto,
+  ForwardTaskDto,
+  PartDoneDto,
+  ProgressTaskDto,
+  ReportDoneDto,
   ReturnTaskDto,
   SelfReportDto,
   TaskListQueryDto,
@@ -66,7 +71,9 @@ type Actor = {
   supervisorId: Types.ObjectId | null;
 };
 
-const PERSON_FIELDS = 'username fullName rank';
+/** Trường người trả kèm nhiệm vụ - chức vụ + mã vai trò để giao diện gắn nhãn. */
+const PERSON_FIELDS =
+  'username fullName rank position roleAssignments.roleCode';
 const CLOSED: TaskStatus[] = ['COMPLETED', 'CANCELLED'];
 
 function hasRole(
@@ -81,6 +88,17 @@ export function personName(p?: Partial<Person> | null): string {
   if (!p) return '';
   const name = p.fullName?.trim() || p.username || '';
   return p.rank ? `${p.rank} ${name}` : name;
+}
+
+/**
+ * Ghi chú lịch sử dạng từng dòng "Tên trường: giá trị" - giao diện tô đậm tên
+ * trường. Dòng không có giá trị thì bỏ.
+ */
+function noteLines(...pairs: Array<[string, string | null | undefined]>) {
+  return pairs
+    .filter(([, value]) => value?.trim())
+    .map(([label, value]) => `${label}: ${value!.trim()}`)
+    .join('\n');
 }
 
 function ymdLabel(ymd?: string | null) {
@@ -150,6 +168,7 @@ export class TasksService {
         .limit(limit)
         .populate([
           { path: 'ownerId', select: PERSON_FIELDS },
+          { path: 'handlerId', select: PERSON_FIELDS },
           { path: 'collaboratorIds', select: PERSON_FIELDS },
           { path: 'assignerId', select: PERSON_FIELDS },
           { path: 'createdById', select: PERSON_FIELDS },
@@ -187,6 +206,8 @@ export class TasksService {
     const can = this.capabilities(actor, task);
     await task.populate([
       { path: 'ownerId', select: PERSON_FIELDS },
+      { path: 'handlerId', select: PERSON_FIELDS },
+      { path: 'forwardedById', select: PERSON_FIELDS },
       { path: 'collaboratorIds', select: PERSON_FIELDS },
       { path: 'assignerId', select: PERSON_FIELDS },
       { path: 'createdById', select: PERSON_FIELDS },
@@ -214,11 +235,18 @@ export class TasksService {
    *   ban chỉ chọn trợ lý mình phụ trách (G4).
    * - Tự khai: phối hợp là ai trong Ban cũng được (trừ chính mình).
    */
-  async people(jwt: JwtPayloadUser, purpose: 'assign' | 'self-report') {
+  async people(
+    jwt: JwtPayloadUser,
+    purpose: 'assign' | 'self-report' | 'forward',
+  ) {
     const actor = await this.loadActor(jwt);
     const members = await this.departmentMembers(actor.departmentId);
     let list: Person[];
-    if (purpose === 'assign') {
+    if (purpose === 'forward') {
+      // Chuyển tiếp: chỉ trợ lý trong bảng Phân công phụ trách của mình.
+      const scope = new Set(actor.supervisedIds.map(String));
+      list = members.filter((m) => scope.has(String(m._id)));
+    } else if (purpose === 'assign') {
       if (actor.isHead) {
         list = members.filter(
           (m) =>
@@ -295,6 +323,7 @@ export class TasksService {
       createdById: actor.id,
       assignerId: actor.id,
       ownerId,
+      handlerId: ownerId,
       collaboratorIds,
       startDate: dto.startDate ?? null,
       dueDate: dto.dueDate,
@@ -306,7 +335,15 @@ export class TasksService {
       task,
       actor,
       'CREATED',
-      `Giao cho ${await this.nameOf(ownerId)}`,
+      noteLines(
+        ['Chủ trì', await this.nameOf(ownerId)],
+        [
+          'Phối hợp',
+          (await Promise.all(collaboratorIds.map((c) => this.nameOf(c)))).join(
+            ', ',
+          ),
+        ],
+      ),
     );
 
     await this.notifications.notify(
@@ -352,8 +389,19 @@ export class TasksService {
         dto.ownerId ?? String(task.ownerId),
         dto.collaboratorIds ?? task.collaboratorIds.map(String),
       );
+      if (!sameId(task.ownerId, people.ownerId)) {
+        // Đổi chủ trì thì quyền xử lý chính về chủ trì mới, bỏ chuyển tiếp cũ.
+        const previous = this.handlerOf(task);
+        if (!sameId(previous, task.ownerId)) {
+          task.formerHandlerIds = [...(task.formerHandlerIds ?? []), previous];
+        }
+        task.handlerId = people.ownerId;
+        task.forwardedById = null;
+      }
       task.ownerId = people.ownerId;
-      task.collaboratorIds = people.collaboratorIds;
+      task.collaboratorIds = people.collaboratorIds.filter(
+        (c) => !sameId(c, this.handlerOf(task)),
+      );
     }
     if (dto.content !== undefined) task.content = dto.content;
     if (dto.basis !== undefined) task.basis = dto.basis;
@@ -400,6 +448,7 @@ export class TasksService {
       basis: dto.basis ?? '',
       createdById: actor.id,
       ownerId: actor.id,
+      handlerId: actor.id,
       collaboratorIds,
       startDate: dto.startDate ?? null,
       dueDate: dto.dueDate ?? null,
@@ -408,7 +457,7 @@ export class TasksService {
       result: dto.result ?? '',
       attachments,
     });
-    await this.log(task, actor, 'CREATED', 'Lập bản tự khai');
+    await this.log(task, actor, 'CREATED', 'Hình thức: Tự khai');
 
     if (dto.submit) return this.submitTask(actor, task);
     return { message: 'Đã lưu nháp.', data: { id: String(task._id) } };
@@ -529,7 +578,7 @@ export class TasksService {
       updated,
       actor,
       'SUBMITTED',
-      `${from === 'RETURNED' ? 'Gửi lại' : 'Gửi'} lên ${target}`,
+      noteLines([from === 'RETURNED' ? 'Gửi lại tới' : 'Gửi tới', target]),
     );
     await this.notifyReviewers(
       updated,
@@ -548,10 +597,13 @@ export class TasksService {
     const actor = await this.loadActor(jwt);
     const task = await this.requireVisible(actor, id);
     const can = this.capabilities(actor, task);
-    if (!can.review || task.review?.kind !== 'SUBMISSION') {
+    if (!can.review || !task.review) {
       throw new ForbiddenException(
         'Bạn không duyệt được bản này ở bước hiện tại.',
       );
+    }
+    if (task.review.kind === 'COMPLETION') {
+      return this.confirmCompletion(actor, task, dto);
     }
 
     // ---- bước 1: Phó ban duyệt, đề xuất loại / mức độ, chuyển Trưởng ban
@@ -623,6 +675,7 @@ export class TasksService {
           priority,
           status: done ? 'COMPLETED' : 'IN_PROGRESS',
           review: null,
+          lastReturn: null,
           approvedById: actor.id,
           assignedAt: now,
           ...(done
@@ -673,15 +726,13 @@ export class TasksService {
       updated,
       actor,
       'APPROVED',
-      [
-        done
-          ? `Chốt hoàn thành - ${LABELS.evaluation[evaluation!]}`
-          : 'Chốt, chuyển Đang thực hiện',
-        `${LABELS.type[type]}, ưu tiên ${LABELS.priority[priority].toLowerCase()}`,
-        dto.note,
-      ]
-        .filter(Boolean)
-        .join('. '),
+      noteLines(
+        ['Kết quả', done ? 'Đã hoàn thành' : 'Chuyển Đang thực hiện'],
+        ['Đánh giá', done ? LABELS.evaluation[evaluation!] : ''],
+        ['Loại', LABELS.type[type]],
+        ['Ưu tiên', LABELS.priority[priority]],
+        ['Ý kiến', dto.note],
+      ),
       changes,
     );
     await this.notifications.notify(
@@ -719,6 +770,7 @@ export class TasksService {
       );
     }
     const stage = task.review!.stage;
+    const completion = task.review!.kind === 'COMPLETION';
     const event = { byId: actor.id, at: new Date(), reason: dto.reason };
 
     const update =
@@ -733,14 +785,16 @@ export class TasksService {
           }
         : {
             $set: {
-              status: 'RETURNED',
+              // Báo cáo hoàn thành bị trả thì quay về Đang thực hiện (C2);
+              // bản tự khai bị trả thì về người lập sửa.
+              status: completion ? 'IN_PROGRESS' : 'RETURNED',
               review: null,
               proposal: null,
               lastReturn: event,
             },
           };
     const updated = await this.taskModel.findOneAndUpdate(
-      { _id: task._id, status: 'PENDING_REVIEW', 'review.stage': stage },
+      { _id: task._id, status: task.status, 'review.stage': stage },
       update,
       { new: true },
     );
@@ -752,17 +806,21 @@ export class TasksService {
     const where =
       to === 'PREVIOUS'
         ? `về Phó ban ${await this.nameOf(task.review!.deputyId)}`
-        : `về người lập ${await this.nameOf(task.createdById)}`;
+        : completion
+          ? `về người xử lý chính ${await this.nameOf(this.handlerOf(task))}`
+          : `về người lập ${await this.nameOf(task.createdById)}`;
     await this.log(
       updated,
       actor,
       'RETURNED',
-      `Trả ${where}. Lý do: ${dto.reason}`,
+      noteLines(['Trả về', where.replace(/^về /, '')], ['Lý do', dto.reason]),
     );
     const recipients: Array<Types.ObjectId | null | undefined> =
       to === 'PREVIOUS'
         ? [task.review!.deputyId]
-        : [task.createdById, task.proposal?.byId];
+        : completion
+          ? [this.handlerOf(task), task.ownerId, task.proposal?.byId]
+          : [task.createdById, task.proposal?.byId];
     await this.notifications.notify(
       recipients.map((userId) => ({
         userId,
@@ -809,6 +867,7 @@ export class TasksService {
       await this.notifications.notify(
         [
           task.ownerId,
+          task.handlerId,
           ...task.collaboratorIds,
           task.assignerId,
           task.review?.deputyId,
@@ -825,6 +884,542 @@ export class TasksService {
     return { message: 'Đã huỷ nhiệm vụ.', data: { id } };
   }
 
+  // ============================================ xử lý, tiến độ, hoàn thành
+
+  /**
+   * Chủ trì là Phó ban chuyển tiếp cho một trợ lý mình phụ trách làm người xử
+   * lý chính. Chuyển lại cho người khác được; chủ trì vẫn xem, cho ý kiến,
+   * thu hồi được.
+   */
+  async forward(jwt: JwtPayloadUser, id: string, dto: ForwardTaskDto) {
+    const actor = await this.loadActor(jwt);
+    const task = await this.requireVisible(actor, id);
+    if (!this.capabilities(actor, task).forward) {
+      throw new ForbiddenException('Bạn không chuyển tiếp được nhiệm vụ này.');
+    }
+    if (!actor.supervisedIds.some((s) => sameId(s, dto.handlerId))) {
+      throw new BadRequestException(
+        'Chỉ chuyển tiếp cho trợ lý mình phụ trách.',
+      );
+    }
+    const previous = this.handlerOf(task);
+    if (sameId(previous, dto.handlerId)) {
+      throw new BadRequestException('Người này đang là người xử lý chính.');
+    }
+    const handlerId = new Types.ObjectId(dto.handlerId);
+
+    // Phối hợp thêm: chỉ trợ lý mình phụ trách. Giữ người phối hợp cấp trên đã
+    // giao; người xử lý chính thì không đồng thời là phối hợp.
+    const added = [...new Set(dto.collaboratorIds ?? [])].filter(
+      (c) => c !== dto.handlerId,
+    );
+    if (added.some((c) => !actor.supervisedIds.some((s) => sameId(s, c)))) {
+      throw new BadRequestException(
+        'Người phối hợp phải là trợ lý mình phụ trách.',
+      );
+    }
+    const existing = task.collaboratorIds.map(String);
+    const fresh = added.filter((c) => !existing.includes(c));
+    const collaboratorIds = [...existing, ...fresh]
+      .filter((c) => c !== dto.handlerId)
+      .map((c) => new Types.ObjectId(c));
+
+    const updated = await this.taskModel.findOneAndUpdate(
+      {
+        _id: task._id,
+        status: 'IN_PROGRESS',
+        ownerId: actor.id,
+        updatedAt: task.updatedAt,
+        ...this.handlerIs(previous),
+      },
+      {
+        $set: { handlerId, forwardedById: actor.id, collaboratorIds },
+        ...(sameId(previous, task.ownerId)
+          ? {}
+          : { $addToSet: { formerHandlerIds: previous } }),
+      },
+      { new: true },
+    );
+    if (!updated)
+      throw new ConflictException(
+        'Nhiệm vụ vừa được người khác xử lý - tải lại trang.',
+      );
+
+    const name = await this.nameOf(handlerId);
+    const freshNames = await Promise.all(
+      fresh.map((c) => this.nameOf(new Types.ObjectId(c))),
+    );
+    const replaced = !sameId(previous, task.ownerId);
+    await this.log(
+      updated,
+      actor,
+      'FORWARDED',
+      noteLines(
+        ['Người xử lý chính', name],
+        ['Thay', replaced ? await this.nameOf(previous) : ''],
+        ['Phối hợp thêm', freshNames.join(', ')],
+        ['Chỉ đạo', dto.note],
+      ),
+    );
+    await this.notifications.notify(
+      [
+        {
+          userId: handlerId,
+          kind: 'INCOMING' as const,
+          title: `Nhiệm vụ chuyển tiếp ${updated.code}`,
+          body: `${actor.name} chuyển bạn xử lý chính: ${updated.content}${dto.note ? `\n${dto.note}` : ''}`,
+          href: `/tasks/${id}`,
+        },
+        ...fresh.map((c) => ({
+          userId: c,
+          kind: 'INFORM' as const,
+          title: `Phối hợp nhiệm vụ ${updated.code}`,
+          body: `${actor.name} giao bạn phối hợp với ${name}: ${updated.content}`,
+          href: `/tasks/${id}`,
+        })),
+        ...(replaced
+          ? [
+              {
+                userId: previous,
+                kind: 'INFORM' as const,
+                title: `Đổi người xử lý ${updated.code}`,
+                body: `${actor.name} chuyển nhiệm vụ cho ${name} xử lý.`,
+                href: `/tasks/${id}`,
+              },
+            ]
+          : []),
+      ],
+      { skipUserId: actor.id },
+    );
+    return { message: `Đã chuyển tiếp cho ${name}.`, data: { id } };
+  }
+
+  /** Chủ trì lấy lại quyền xử lý chính. */
+  async recall(jwt: JwtPayloadUser, id: string) {
+    const actor = await this.loadActor(jwt);
+    const task = await this.requireVisible(actor, id);
+    if (!this.capabilities(actor, task).recall) {
+      throw new ForbiddenException('Bạn không thu hồi được nhiệm vụ này.');
+    }
+    const previous = this.handlerOf(task);
+    const updated = await this.taskModel.findOneAndUpdate(
+      {
+        _id: task._id,
+        status: 'IN_PROGRESS',
+        ownerId: actor.id,
+        ...this.handlerIs(previous),
+      },
+      {
+        $set: { handlerId: actor.id, forwardedById: null },
+        $addToSet: { formerHandlerIds: previous },
+      },
+      { new: true },
+    );
+    if (!updated)
+      throw new ConflictException(
+        'Nhiệm vụ vừa được người khác xử lý - tải lại trang.',
+      );
+    const name = await this.nameOf(previous);
+    await this.log(
+      updated,
+      actor,
+      'RECALLED',
+      noteLines(['Thu hồi từ', name], ['Người xử lý chính', actor.name]),
+    );
+    await this.notifications.notify(
+      {
+        userId: previous,
+        kind: 'INFORM',
+        title: `Thu hồi nhiệm vụ ${updated.code}`,
+        body: `${actor.name} đã thu hồi, bạn không còn xử lý chính: ${updated.content}`,
+        href: `/tasks/${id}`,
+      },
+      { skipUserId: actor.id },
+    );
+    return { message: `Đã thu hồi từ ${name}.`, data: { id } };
+  }
+
+  /** Chỉ người xử lý chính cập nhật tiến độ (C1, C4). */
+  async updateProgress(jwt: JwtPayloadUser, id: string, dto: ProgressTaskDto) {
+    const actor = await this.loadActor(jwt);
+    const task = await this.requireVisible(actor, id);
+    if (!this.capabilities(actor, task).progress) {
+      throw new ForbiddenException(
+        'Chỉ người xử lý chính cập nhật tiến độ khi nhiệm vụ đang thực hiện.',
+      );
+    }
+    const attachments = await this.resolveAttachments(
+      actor,
+      dto.attachmentIds ?? [],
+      [],
+    );
+    const from = task.progress;
+    const updated = await this.taskModel.findOneAndUpdate(
+      { _id: task._id, status: 'IN_PROGRESS', ...this.handlerIs(actor.id) },
+      { $set: { progress: dto.progress } },
+      { new: true },
+    );
+    if (!updated)
+      throw new ConflictException(
+        'Nhiệm vụ vừa được người khác xử lý - tải lại trang.',
+      );
+    await this.log(
+      updated,
+      actor,
+      'PROGRESS',
+      dto.note,
+      from !== dto.progress
+        ? [{ field: 'progress', from: `${from}%`, to: `${dto.progress}%` }]
+        : [],
+      attachments,
+    );
+    return { message: 'Đã cập nhật tiến độ.', data: { id } };
+  }
+
+  /**
+   * Người xử lý chính báo cáo hoàn thành → Chờ xác nhận (C2, S8). Xác nhận 2
+   * cấp: Phó ban (người chuyển tiếp, hoặc Phó ban phụ trách trợ lý xử lý) rồi
+   * Trưởng ban chốt; không có Phó ban phù hợp thì Trưởng ban chốt luôn.
+   */
+  async reportDone(jwt: JwtPayloadUser, id: string, dto: ReportDoneDto) {
+    const actor = await this.loadActor(jwt);
+    const task = await this.requireVisible(actor, id);
+    if (!this.capabilities(actor, task).report) {
+      throw new ForbiddenException(
+        'Chỉ người xử lý chính báo cáo hoàn thành khi nhiệm vụ đang thực hiện.',
+      );
+    }
+    const resultAttachments = await this.resolveAttachments(
+      actor,
+      dto.attachmentIds ?? [],
+      task.resultAttachments ?? [],
+    );
+    const deputyId = await this.completionDeputy(task, actor.id);
+    const now = new Date();
+    const updated = await this.taskModel.findOneAndUpdate(
+      { _id: task._id, status: 'IN_PROGRESS', ...this.handlerIs(actor.id) },
+      {
+        $set: {
+          status: 'PENDING_CONFIRMATION',
+          progress: 100,
+          result: dto.result,
+          resultAttachments,
+          reportedAt: now,
+          review: {
+            kind: 'COMPLETION',
+            stage: deputyId ? 'DEPUTY' : 'HEAD',
+            deputyId,
+            since: now,
+          },
+          proposal: null,
+        },
+      },
+      { new: true },
+    );
+    if (!updated)
+      throw new ConflictException(
+        'Nhiệm vụ vừa được người khác xử lý - tải lại trang.',
+      );
+    const target = deputyId
+      ? `Phó ban ${await this.nameOf(deputyId)}`
+      : 'Trưởng ban';
+    await this.log(
+      updated,
+      actor,
+      'REPORTED',
+      noteLines(['Gửi xác nhận', target], ['Kết quả', dto.result]),
+      task.progress !== 100
+        ? [{ field: 'progress', from: `${task.progress}%`, to: '100%' }]
+        : [],
+      resultAttachments.filter(
+        (a) => !(task.resultAttachments ?? []).some((o) => sameId(o.id, a.id)),
+      ),
+    );
+    await this.notifyReviewers(
+      updated,
+      actor,
+      `${actor.name} báo cáo hoàn thành ${updated.code}`,
+    );
+    return { message: `Đã báo cáo hoàn thành, gửi ${target}.`, data: { id } };
+  }
+
+  /** Xác nhận hoàn thành: Phó ban đề xuất mức đánh giá, Trưởng ban chốt. */
+  private async confirmCompletion(
+    actor: Actor,
+    task: TaskDocument,
+    dto: ApproveTaskDto,
+  ) {
+    const id = String(task._id);
+    if (task.review!.stage === 'DEPUTY') {
+      if (!dto.evaluation) {
+        throw new BadRequestException('Vui lòng đề xuất mức đánh giá.');
+      }
+      const updated = await this.taskModel.findOneAndUpdate(
+        {
+          _id: task._id,
+          status: 'PENDING_CONFIRMATION',
+          'review.stage': 'DEPUTY',
+        },
+        {
+          $set: {
+            'review.stage': 'HEAD',
+            'review.since': new Date(),
+            proposal: {
+              type: null,
+              priority: null,
+              evaluation: dto.evaluation,
+              byId: actor.id,
+              at: new Date(),
+            },
+          },
+        },
+        { new: true },
+      );
+      if (!updated)
+        throw new ConflictException(
+          'Nhiệm vụ vừa được người khác xử lý - tải lại trang.',
+        );
+      await this.log(
+        updated,
+        actor,
+        'APPROVED_STEP',
+        noteLines(
+          ['Chuyển tới', 'Trưởng ban chốt'],
+          ['Đề xuất đánh giá', LABELS.evaluation[dto.evaluation]],
+          ['Ý kiến', dto.note],
+        ),
+      );
+      await this.notifyReviewers(
+        updated,
+        actor,
+        `${actor.name} đã xác nhận bước 1 ${updated.code}`,
+      );
+      return { message: 'Đã xác nhận, chuyển Trưởng ban chốt.', data: { id } };
+    }
+
+    const evaluation = dto.evaluation ?? task.proposal?.evaluation ?? null;
+    if (!evaluation) {
+      throw new BadRequestException('Vui lòng chọn mức đánh giá.');
+    }
+    const now = new Date();
+    const updated = await this.taskModel.findOneAndUpdate(
+      { _id: task._id, status: 'PENDING_CONFIRMATION', 'review.stage': 'HEAD' },
+      {
+        $set: {
+          status: 'COMPLETED',
+          review: null,
+          lastReturn: null,
+          progress: 100,
+          completedAt: now,
+          confirmedById: actor.id,
+          evaluation,
+        },
+      },
+      { new: true },
+    );
+    if (!updated)
+      throw new ConflictException(
+        'Nhiệm vụ vừa được người khác xử lý - tải lại trang.',
+      );
+    const proposed = task.proposal?.evaluation;
+    await this.log(
+      updated,
+      actor,
+      'APPROVED',
+      noteLines(
+        ['Kết quả', 'Xác nhận hoàn thành'],
+        ['Đánh giá', LABELS.evaluation[evaluation]],
+        ['Ý kiến', dto.note],
+      ),
+      proposed && proposed !== evaluation
+        ? [
+            {
+              field: 'evaluation',
+              from: LABELS.evaluation[proposed],
+              to: LABELS.evaluation[evaluation],
+            },
+          ]
+        : [],
+    );
+    await this.notifications.notify(
+      [
+        this.handlerOf(task),
+        task.ownerId,
+        task.assignerId,
+        task.proposal?.byId,
+      ].map((userId) => ({
+        userId,
+        kind: 'APPROVED' as const,
+        title: `Đã xác nhận hoàn thành ${updated.code}`,
+        body: `${LABELS.evaluation[evaluation]}: ${updated.content}`,
+        href: `/tasks/${id}`,
+      })),
+      { skipUserId: actor.id },
+    );
+    return { message: 'Đã xác nhận hoàn thành.', data: { id } };
+  }
+
+  /**
+   * Ý kiến trên dòng thời gian - mọi người xem được nhiệm vụ đều cho ý kiến
+   * (người phối hợp chỉ có quyền này, không cập nhật tiến độ).
+   */
+  async comment(jwt: JwtPayloadUser, id: string, dto: CommentTaskDto) {
+    const actor = await this.loadActor(jwt);
+    const task = await this.requireVisible(actor, id);
+    if (!this.capabilities(actor, task).comment) {
+      throw new ForbiddenException('Không cho ý kiến được ở trạng thái này.');
+    }
+    const attachments = await this.resolveAttachments(
+      actor,
+      dto.attachmentIds ?? [],
+      [],
+    );
+    await this.log(task, actor, 'COMMENT', dto.note, [], attachments);
+    // Đụng updatedAt để nhiệm vụ nổi lên đầu danh sách.
+    await this.taskModel.updateOne(
+      { _id: task._id },
+      { $currentDate: { updatedAt: true } },
+    );
+    const body =
+      dto.note.length > 200 ? `${dto.note.slice(0, 200)}…` : dto.note;
+    await this.notifications.notify(
+      [
+        this.handlerOf(task),
+        task.ownerId,
+        task.assignerId,
+        task.forwardedById,
+        task.createdById,
+        ...task.collaboratorIds,
+      ].map((userId) => ({
+        userId,
+        kind: 'COMMENT' as const,
+        title: `Ý kiến mới ${task.code ?? ''}`.trim(),
+        body: `${actor.name}: ${body}`,
+        href: `/tasks/${id}`,
+      })),
+      { skipUserId: actor.id },
+    );
+    return { message: 'Đã gửi ý kiến.', data: { id } };
+  }
+
+  /**
+   * Người phối hợp đánh dấu xong / bỏ đánh dấu phần việc của mình. Chỉ là dấu
+   * riêng: nhiệm vụ vẫn Đang thực hiện cho tới khi người xử lý chính báo cáo.
+   */
+  async markPart(
+    jwt: JwtPayloadUser,
+    id: string,
+    done: boolean,
+    dto: PartDoneDto | null,
+  ) {
+    const actor = await this.loadActor(jwt);
+    const task = await this.requireVisible(actor, id);
+    const can = this.capabilities(actor, task);
+    if (done ? !can.partDone : !can.partUndo) {
+      throw new ForbiddenException(
+        done
+          ? 'Chỉ người phối hợp đánh dấu xong phần việc khi nhiệm vụ đang thực hiện.'
+          : 'Bạn chưa đánh dấu xong phần việc nào để bỏ.',
+      );
+    }
+    const attachments = dto
+      ? await this.resolveAttachments(actor, dto.attachmentIds ?? [], [])
+      : [];
+    const note = dto?.note ?? '';
+    const updated = await this.taskModel.findOneAndUpdate(
+      {
+        _id: task._id,
+        status: 'IN_PROGRESS',
+        collaboratorIds: actor.id,
+        'collaboratorDone.userId': done ? { $ne: actor.id } : actor.id,
+      },
+      done
+        ? {
+            $push: {
+              collaboratorDone: { userId: actor.id, at: new Date(), note },
+            },
+          }
+        : { $pull: { collaboratorDone: { userId: actor.id } } },
+      { new: true },
+    );
+    if (!updated)
+      throw new ConflictException(
+        'Nhiệm vụ vừa được người khác xử lý - tải lại trang.',
+      );
+    await this.log(
+      updated,
+      actor,
+      done ? 'PART_DONE' : 'PART_UNDONE',
+      noteLines(['Kết quả phần việc', note]),
+      [],
+      attachments,
+    );
+    await this.notifications.notify(
+      [this.handlerOf(task), task.ownerId].map((userId) => ({
+        userId,
+        kind: 'INFORM' as const,
+        title: done
+          ? `Phối hợp đã xong phần việc ${task.code}`
+          : `Phối hợp bỏ đánh dấu xong ${task.code}`,
+        body: `${actor.name}${note ? `: ${note}` : ''}`,
+        href: `/tasks/${id}`,
+      })),
+      { skipUserId: actor.id },
+    );
+    return {
+      message: done
+        ? 'Đã đánh dấu xong phần việc của bạn.'
+        : 'Đã bỏ đánh dấu xong.',
+      data: { id },
+    };
+  }
+
+  /** Người xử lý chính hiện tại; dữ liệu cũ chưa có handlerId thì là chủ trì. */
+  private handlerOf(task: TaskDocument): Types.ObjectId {
+    return task.handlerId ?? task.ownerId;
+  }
+
+  /** Điều kiện "người xử lý chính là X" cho các lệnh cập nhật có điều kiện. */
+  private handlerIs(userId: Types.ObjectId) {
+    return {
+      $or: [{ handlerId: userId }, { handlerId: null, ownerId: userId }],
+    };
+  }
+
+  /** Phó ban xác nhận bước 1 cho báo cáo hoàn thành (S8). null = Trưởng ban chốt luôn. */
+  private async completionDeputy(
+    task: TaskDocument,
+    handlerId: Types.ObjectId,
+  ): Promise<Types.ObjectId | null> {
+    let candidate: Types.ObjectId | null = null;
+    if (task.forwardedById && !sameId(task.forwardedById, handlerId)) {
+      candidate = task.forwardedById;
+    } else {
+      const handler = await this.userModel
+        .findById(handlerId)
+        .select('supervisorId roleAssignments')
+        .lean();
+      if (
+        handler &&
+        !hasRole(handler.roleAssignments, RoleCode.DEPUTY) &&
+        handler.supervisorId
+      ) {
+        candidate = handler.supervisorId;
+      }
+    }
+    if (!candidate || sameId(candidate, handlerId)) return null;
+    const deputy = await this.userModel
+      .findOne({
+        _id: candidate,
+        isActive: true,
+        departmentId: task.departmentId,
+        'roleAssignments.roleCode': RoleCode.DEPUTY,
+      })
+      .select('_id')
+      .lean();
+    return deputy?._id ?? null;
+  }
+
   // ======================================================= quyền
 
   /** Những việc người này được làm với nhiệm vụ - server kiểm và trả về cho client. */
@@ -838,15 +1433,25 @@ export class TasksService {
       : task.status === 'IN_PROGRESS' &&
         (sameId(task.assignerId, actor.id) || actor.isHead);
 
+    const handler = this.handlerOf(task);
+    const isHandler = sameId(handler, actor.id);
+    const inReview =
+      (task.status === 'PENDING_REVIEW' ||
+        task.status === 'PENDING_CONFIRMATION') &&
+      task.review;
+
     let review = false;
     let returnTargets: Array<'PREVIOUS' | 'START'> = [];
-    if (task.status === 'PENDING_REVIEW' && task.review) {
+    if (inReview && task.review) {
       if (task.review.stage === 'DEPUTY') {
         review = actor.isDeputy && sameId(task.review.deputyId, actor.id);
         returnTargets = review ? ['START'] : [];
       } else {
-        // Không ai tự duyệt bản do chính mình lập (C3).
-        review = actor.isHead && !mineCreated;
+        // Không ai tự duyệt bản mình lập, không ai tự xác nhận việc mình xử
+        // lý (C3).
+        review =
+          actor.isHead &&
+          (task.review.kind === 'COMPLETION' ? !isHandler : !mineCreated);
         returnTargets = review
           ? task.review.deputyId
             ? ['PREVIOUS', 'START']
@@ -867,8 +1472,30 @@ export class TasksService {
         (!self && sameId(task.assignerId, actor.id)) ||
         (self && mineCreated && untouched));
 
+    const running = task.status === 'IN_PROGRESS';
+    const owner = sameId(task.ownerId, actor.id);
+    const collaborator = task.collaboratorIds.some((c) => sameId(c, actor.id));
+    const partDone = (task.collaboratorDone ?? []).some((d) =>
+      sameId(d.userId, actor.id),
+    );
     return {
       edit: editable,
+      // Chỉ người xử lý chính ở luồng hiện tại cập nhật tiến độ / báo xong.
+      progress: running && isHandler,
+      report: running && isHandler,
+      // Chủ trì là Phó ban chuyển tiếp cho trợ lý mình phụ trách.
+      // Đang chuyển cho trợ lý thì phải thu hồi trước rồi mới chuyển người khác.
+      forward:
+        running &&
+        owner &&
+        actor.isDeputy &&
+        actor.supervisedIds.length > 0 &&
+        sameId(handler, task.ownerId),
+      recall: running && owner && !sameId(handler, task.ownerId),
+      comment: task.status !== 'DRAFT' && task.status !== 'CANCELLED',
+      // Người phối hợp đánh dấu xong phần việc của mình (không đóng nhiệm vụ).
+      partDone: running && collaborator && !partDone,
+      partUndo: running && collaborator && partDone,
       submit:
         self &&
         mineCreated &&
@@ -943,6 +1570,8 @@ export class TasksService {
       : [actor.id];
     const reach: Record<string, unknown>[] = [
       { ownerId: { $in: people } },
+      { handlerId: { $in: people } },
+      { formerHandlerIds: { $in: people } },
       { collaboratorIds: { $in: people } },
       { createdById: actor.id },
     ];
@@ -974,7 +1603,14 @@ export class TasksService {
         if (actor.isDeputy)
           or.push({ 'review.stage': 'DEPUTY', 'review.deputyId': actor.id });
         if (actor.isHead)
-          or.push({ 'review.stage': 'HEAD', createdById: { $ne: actor.id } });
+          or.push(
+            {
+              'review.kind': 'SUBMISSION',
+              'review.stage': 'HEAD',
+              createdById: { $ne: actor.id },
+            },
+            { 'review.kind': 'COMPLETION', 'review.stage': 'HEAD' },
+          );
         if (!or.length) return { _id: null };
         return {
           status: { $in: ['PENDING_REVIEW', 'PENDING_CONFIRMATION'] },
@@ -987,6 +1623,7 @@ export class TasksService {
         return {
           $or: [
             { ownerId: actor.id },
+            { handlerId: actor.id },
             { collaboratorIds: actor.id },
             { createdById: actor.id },
           ],
@@ -1211,6 +1848,7 @@ export class TasksService {
     action: HistoryAction,
     note = '',
     changes: FieldChange[] = [],
+    attachments: TaskAttachment[] = [],
   ) {
     await this.historyModel.create({
       taskId: task._id,
@@ -1219,21 +1857,22 @@ export class TasksService {
       action,
       note,
       changes,
+      attachments,
       at: new Date(),
     });
   }
 
   private proposalNote(dto: ApproveTaskDto, done: boolean, note?: string) {
-    return [
-      'Duyệt bước 1, chuyển Trưởng ban chốt',
-      `Đề xuất: ${LABELS.type[dto.type!]}, ưu tiên ${LABELS.priority[dto.priority!].toLowerCase()}`,
-      done && dto.evaluation
-        ? `đánh giá ${LABELS.evaluation[dto.evaluation]}`
-        : '',
-      note,
-    ]
-      .filter(Boolean)
-      .join('. ');
+    return noteLines(
+      ['Chuyển tới', 'Trưởng ban chốt'],
+      ['Đề xuất loại', LABELS.type[dto.type!]],
+      ['Đề xuất ưu tiên', LABELS.priority[dto.priority!]],
+      [
+        'Đề xuất đánh giá',
+        done && dto.evaluation ? LABELS.evaluation[dto.evaluation] : '',
+      ],
+      ['Ý kiến', note],
+    );
   }
 
   /** Báo cho người đang phải duyệt bước hiện tại. */
@@ -1246,6 +1885,10 @@ export class TasksService {
     if (task.review?.stage === 'DEPUTY') {
       reviewers = [task.review.deputyId];
     } else {
+      // Bản tự khai: Trưởng ban không tự duyệt bản mình lập. Báo cáo hoàn
+      // thành: báo mọi Trưởng ban (Trưởng ban không xử lý chính).
+      const exclude =
+        task.review?.kind === 'COMPLETION' ? null : task.createdById;
       const heads = await this.userModel
         .find({
           departmentId: task.departmentId,
@@ -1254,9 +1897,7 @@ export class TasksService {
         })
         .select('_id')
         .lean();
-      reviewers = heads
-        .map((h) => h._id)
-        .filter((id) => !sameId(id, task.createdById));
+      reviewers = heads.map((h) => h._id).filter((id) => !sameId(id, exclude));
     }
     await this.notifications.notify(
       reviewers.map((userId) => ({

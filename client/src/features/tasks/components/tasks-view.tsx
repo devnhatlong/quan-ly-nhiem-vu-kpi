@@ -7,7 +7,7 @@ import useSWR, { useSWRConfig } from "swr";
 
 import { SegmentedTabs } from "@/components/common/segmented-tabs";
 import { TablePagination } from "@/components/common/table-pagination";
-import { Badge } from "@/components/ui/badge";
+import { CountBadge } from "@/components/common/count-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,8 @@ import {
   STATUS_LABELS,
   fetchTaskCounts,
   fetchTasks,
+  handlerOf,
+  isForwarded,
   personName,
   reviewStepText,
   taskKeys,
@@ -142,14 +144,11 @@ export function TasksView() {
             label: (
               <span className="inline-flex items-center gap-1.5">
                 {t.label}
-                {counts && counts[t.value] ? (
-                  <Badge
-                    variant={t.value === "review" ? "destructive" : "secondary"}
-                    className="h-5 min-w-5 justify-center px-1.5 text-[11px]"
-                  >
-                    {counts[t.value]}
-                  </Badge>
-                ) : null}
+                <CountBadge
+                  count={counts?.[t.value]}
+                  className="ml-0"
+                  label={`${counts?.[t.value] ?? 0} nhiệm vụ`}
+                />
               </span>
             ),
           }))}
@@ -252,6 +251,11 @@ export function TasksView() {
                       </TableCell>
                       <TableCell className="align-top">
                         <div className="truncate text-sm">{personName(task.ownerId)}</div>
+                        {isForwarded(task) ? (
+                          <div className="truncate text-xs text-violet-700 dark:text-violet-300">
+                            → {personName(handlerOf(task))} xử lý
+                          </div>
+                        ) : null}
                         {task.collaboratorIds.length ? (
                           <div className="text-xs text-muted-foreground">
                             +{task.collaboratorIds.length} phối hợp

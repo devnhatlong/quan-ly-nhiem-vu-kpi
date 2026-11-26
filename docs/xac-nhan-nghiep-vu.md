@@ -50,6 +50,17 @@ Hệ quả khi lập trình:
 | C1 | Người chủ trì cập nhật tiến độ (bấm nhanh 0 / 25 / 50 / 75 / 100% hoặc nhập số %), ghi nội dung đã làm, đính kèm | Đồng ý |
 | C2 | Báo cáo hoàn thành → Chờ xác nhận → xác nhận + đánh giá, hoặc trả lại kèm lý do | Đồng ý |
 | C2a | Mức đánh giá | **Hoàn thành xuất sắc / Hoàn thành tốt / Hoàn thành / Không hoàn thành** |
+| C4 | Ai cập nhật tiến độ, ai cho ý kiến? | **Chỉ người xử lý chính ở luồng hiện tại cập nhật tiến độ và báo hoàn thành.** Người xử lý chính vừa cập nhật vừa cho ý kiến trên dòng thời gian; **người phối hợp chỉ cho ý kiến** |
+| C9 | Chuyển tiếp xử lý | Trưởng ban giao Phó ban chủ trì: Phó ban tự cập nhật / báo hoàn thành, **hoặc chuyển tiếp cho trợ lý** - khi đó trợ lý là người xử lý chính, cập nhật tiến độ và báo hoàn thành |
+
+Hệ quả C4, C9 khi lập trình (2026-11-26):
+- Nhiệm vụ có thêm "người xử lý chính", mặc định là chủ trì. Chỉ người này có nút Cập nhật tiến độ và Báo cáo hoàn thành.
+- Chủ trì là Phó ban mới chuyển tiếp được, và chỉ cho trợ lý trong bảng Phân công phụ trách của mình. Chuyển tiếp rồi thì Phó ban vẫn là chủ trì: xem, cho ý kiến, thu hồi về mình. Muốn đổi sang trợ lý khác thì **thu hồi trước rồi mới chuyển tiếp lại** (người dùng yêu cầu 2026-11-26). Trợ lý không chuyển tiếp tiếp được.
+- Người xử lý cũ (bị chuyển / thu hồi) vẫn xem và cho ý kiến được, không cập nhật được nữa.
+- Mọi người xem được nhiệm vụ đều cho ý kiến (kèm tệp) trên dòng thời gian - Trưởng ban, Phó ban phụ trách, chủ trì, phối hợp. Ý kiến báo chuông cho những người liên quan.
+- Trưởng ban sửa đổi chủ trì thì quyền xử lý chính về chủ trì mới.
+- **Người phối hợp có nút "Xong phần việc của tôi"** (người dùng yêu cầu 2026-11-26): chỉ đánh dấu phần việc của người đó (kèm kết quả, tệp nếu có), không đổi trạng thái nhiệm vụ. Bỏ đánh dấu được khi nhiệm vụ còn đang thực hiện. Người xử lý chính vẫn là người báo hoàn thành cả nhiệm vụ; báo được kể cả khi còn người phối hợp chưa xong (có cảnh báo).
+- Báo hoàn thành đi theo đề xuất S8: việc đã chuyển tiếp → Phó ban chuyển tiếp xác nhận bước 1 → Trưởng ban chốt.
 
 | S7 | Trưởng ban trả lại bản đã qua Phó ban thì trả về đâu? | **Trưởng ban chọn khi trả lại: về cấp trước (Phó ban) hoặc về ban đầu (người lập)** |
 
@@ -64,7 +75,6 @@ Người dùng (bên phát triển) chưa có ý kiến khách hàng cho các ý
 | S8 / C5 | Xác nhận hoàn thành nhiệm vụ được giao **cũng 2 cấp như tự khai**, theo người chủ trì chứ không theo người giao: chủ trì là trợ lý có Phó ban phụ trách → Phó ban xác nhận + đề xuất mức đánh giá → Trưởng ban chốt. Chủ trì là trợ lý trực thuộc Trưởng ban hoặc là Phó ban → Trưởng ban chốt luôn. Trả lại theo cách của S7. | Khách đã nói "lúc nào cũng 2 cấp, Trưởng ban duyệt mới là chốt". Dùng một luồng duyệt cho cả việc tự khai lẫn việc được giao thì người dùng chỉ phải học một cách. |
 | S9 | Khi tự khai, trợ lý chọn **"Đã hoàn thành"** (việc đã làm xong, kèm kết quả) hoặc **"Đang thực hiện"** (việc phát sinh chưa xong). Được chốt: loại 1 thành Đã hoàn thành luôn; loại 2 chuyển sang Đang thực hiện rồi đi tiếp như việc được giao. | S1 đã chốt cả hai trường hợp; một bản tự khai có kết quả đầy đủ không nên phải duyệt hai lần. |
 | C3 | Nhiệm vụ chỉ đóng khi Trưởng ban chốt. Không ai tự xác nhận việc mình chủ trì. Chủ trì chỉ chọn được trợ lý hoặc Phó ban (Trưởng ban không làm chủ trì). | Tránh trường hợp Trưởng ban vừa làm vừa tự chốt. |
-| C4 | Người phối hợp: xem, ghi ý kiến, đính kèm tài liệu. Không cập nhật %, không báo hoàn thành. | Một nhiệm vụ một người chịu trách nhiệm tiến độ. |
 | C6 | Có **đề nghị gia hạn**: người chủ trì nêu hạn mới + lý do, **Trưởng ban duyệt** (1 cấp), Phó ban phụ trách xem được. Lưu cả hạn gốc; thống kê đếm số lần gia hạn. | Hạn do lãnh đạo đặt; gia hạn không đi 2 cấp để khỏi chậm, nhưng vẫn lưu dấu để đánh giá. |
 | C7 | Nhắc: còn 5 ngày, còn 2 ngày, đến hạn → nhắc **người chủ trì**. Quá hạn, quá hạn chưa báo cáo → nhắc chủ trì **và** Phó ban phụ trách, Trưởng ban. Mỗi mốc nhắc một lần. Mốc ngày cấu hình được. | Nhắc lãnh đạo ngay từ mốc 5 ngày sẽ thành nhiễu. |
 | C8 | Không ai xoá. **Huỷ kèm lý do:** người giao huỷ được việc mình giao; Trưởng ban huỷ được mọi việc; người lập rút lại được bản tự khai khi chưa ai duyệt. Việc đã hoàn thành không huỷ được. | Đủ để sửa sai mà không mất dấu vết. |
@@ -76,4 +86,4 @@ Người dùng (bên phát triển) chưa có ý kiến khách hàng cho các ý
 ### Phát sinh từ S5 (2 cấp duyệt)
 - [ ] S8. Xác nhận hoàn thành nhiệm vụ được giao có 2 cấp không? (xem đề xuất ở trên)
 
-- [ ] S9, C3, C4, C6, C7, C8, K1, K2 - đang làm theo đề xuất ở trên, chờ khách xác nhận.
+- [ ] S9, C3, C6, C7, C8, K1, K2 - đang làm theo đề xuất ở trên, chờ khách xác nhận.

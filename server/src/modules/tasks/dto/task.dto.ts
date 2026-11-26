@@ -203,6 +203,87 @@ export class CancelTaskDto {
   reason!: string;
 }
 
+/** Tệp kèm theo ý kiến / tiến độ / báo cáo - tệp đã tải lên qua /uploads. */
+class WithAttachmentsDto {
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsMongoId({ each: true, message: 'Tệp đính kèm không hợp lệ.' })
+  attachmentIds?: string[];
+}
+
+/** Chủ trì (Phó ban) chuyển tiếp cho trợ lý mình phụ trách xử lý chính. */
+export class ForwardTaskDto {
+  @ApiProperty({ description: 'Id trợ lý xử lý chính' })
+  @IsMongoId({ message: 'Người xử lý không hợp lệ.' })
+  handlerId!: string;
+
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Thêm người phối hợp - trợ lý mình phụ trách',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsMongoId({ each: true, message: 'Người phối hợp không hợp lệ.' })
+  collaboratorIds?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  @Transform(trim)
+  note?: string;
+}
+
+/** Người xử lý chính cập nhật tiến độ (C1). */
+export class ProgressTaskDto extends WithAttachmentsDto {
+  @ApiProperty({ minimum: 0, maximum: 100 })
+  @Type(() => Number)
+  @IsInt({ message: 'Tiến độ phải là số nguyên.' })
+  @Min(0, { message: 'Tiến độ từ 0 đến 100%.' })
+  @Max(100, { message: 'Tiến độ từ 0 đến 100%.' })
+  progress!: number;
+
+  @ApiProperty({ description: 'Nội dung đã làm' })
+  @IsString()
+  @IsNotEmpty({ message: 'Vui lòng ghi nội dung đã làm.' })
+  @MaxLength(4000)
+  @Transform(trim)
+  note!: string;
+}
+
+/** Người xử lý chính báo cáo hoàn thành (C2). */
+export class ReportDoneDto extends WithAttachmentsDto {
+  @ApiProperty({ description: 'Kết quả thực hiện' })
+  @IsString()
+  @IsNotEmpty({ message: 'Vui lòng ghi kết quả thực hiện.' })
+  @MaxLength(4000)
+  @Transform(trim)
+  result!: string;
+}
+
+/** Ý kiến trên dòng thời gian. */
+export class CommentTaskDto extends WithAttachmentsDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty({ message: 'Vui lòng nhập ý kiến.' })
+  @MaxLength(4000)
+  @Transform(trim)
+  note!: string;
+}
+
+/** Người phối hợp xong phần việc của mình - ghi kết quả phần việc (tuỳ chọn). */
+export class PartDoneDto extends WithAttachmentsDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  @Transform(trim)
+  note?: string;
+}
+
 export const TASK_VIEWS = ['mine', 'assigned', 'review', 'all'] as const;
 export type TaskView = (typeof TASK_VIEWS)[number];
 

@@ -5,10 +5,15 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Ban,
+  CheckCheck,
   CheckCircle2,
+  Flag,
+  Forward,
   Pencil,
   Send,
+  TrendingUp,
   Undo2,
+  UserRoundX,
 } from "lucide-react";
 import useSWR, { useSWRConfig } from "swr";
 import { toast } from "sonner";
@@ -18,16 +23,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   EVALUATION_LABELS,
-  FIELD_LABELS,
-  HISTORY_LABELS,
   PRIORITY_LABELS,
   TYPE_LABELS,
   fetchTask,
+  markPartUndone,
   personName,
   reviewStepText,
   submitTask,
   taskKeys,
-  type TaskHistoryEntry,
 } from "@/features/tasks/api";
 import { AssignTaskDialog } from "@/features/tasks/components/assign-task-dialog";
 import { AttachmentList } from "@/features/tasks/components/attachments-field";
@@ -38,6 +41,14 @@ import {
 } from "@/features/tasks/components/review-dialogs";
 import { SelfReportDialog } from "@/features/tasks/components/self-report-dialog";
 import { TaskInfoCard } from "@/features/tasks/components/task-info-card";
+import { TaskTimeline } from "@/features/tasks/components/task-timeline";
+import {
+  ForwardDialog,
+  PartDoneDialog,
+  ProgressDialog,
+  RecallDialog,
+  ReportDialog,
+} from "@/features/tasks/components/work-dialogs";
 import {
   OverdueTag,
   StatusBadge,
@@ -60,55 +71,22 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-const DOT: Record<TaskHistoryEntry["action"], string> = {
-  CREATED: "bg-sky-500",
-  UPDATED: "bg-slate-400",
-  SUBMITTED: "bg-amber-500",
-  APPROVED_STEP: "bg-emerald-400",
-  APPROVED: "bg-emerald-600",
-  RETURNED: "bg-rose-500",
-  CANCELLED: "bg-slate-500",
-};
-
-function HistoryTimeline({ items }: { items: TaskHistoryEntry[] }) {
-  return (
-    <ol className="relative space-y-4 border-l pl-5">
-      {items.map((h) => (
-        <li key={h._id} className="relative">
-          <span
-            className={cn(
-              "absolute -left-[26px] top-1.5 size-2.5 rounded-full ring-4 ring-card",
-              DOT[h.action],
-            )}
-          />
-          <div className="flex flex-wrap items-baseline gap-x-2 text-sm">
-            <span className="font-medium">{HISTORY_LABELS[h.action]}</span>
-            <span className="text-muted-foreground">· {h.actorName}</span>
-            <span className="text-xs tabular-nums text-muted-foreground">{when(h.at)}</span>
-          </div>
-          {h.note ? <p className="mt-0.5 whitespace-pre-line text-sm text-muted-foreground">{h.note}</p> : null}
-          {h.changes.length ? (
-            <ul className="mt-1 space-y-0.5 text-xs">
-              {h.changes.map((c, i) => (
-                <li key={i}>
-                  <span className="font-medium">{FIELD_LABELS[c.field] ?? c.field}:</span>{" "}
-                  <span className="text-muted-foreground line-through">{c.from || "(trống)"}</span>{" "}
-                  → <span>{c.to || "(trống)"}</span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </li>
-      ))}
-    </ol>
-  );
-}
-
 export function TaskDetailView({ id }: { id: string }) {
   const { mutate: mutateAll } = useSWRConfig();
   const { data, error, isLoading, mutate } = useSWR(taskKeys.detail(id), () => fetchTask(id));
 
-  const [dialog, setDialog] = useState<"edit" | "approve" | "return" | "cancel" | null>(null);
+  const [dialog, setDialog] = useState<
+    | "edit"
+    | "approve"
+    | "return"
+    | "cancel"
+    | "progress"
+    | "report"
+    | "forward"
+    | "recall"
+    | "partDone"
+    | null
+  >(null);
   const [submitting, setSubmitting] = useState(false);
 
   const refresh = () => {
@@ -143,6 +121,7 @@ export function TaskDetailView({ id }: { id: string }) {
   const { task, history, can } = data;
   const self = task.source === "SELF_REPORTED";
   const final = task.review?.stage === "HEAD";
+  const completion = task.review?.kind === "COMPLETION";
 
   const submit = async () => {
     setSubmitting(true);
@@ -152,6 +131,19 @@ export function TaskDetailView({ id }: { id: string }) {
       refresh();
     } catch (err) {
       toast.error(getApiErrorMessage(err, "Không gửi được."));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const undoPart = async () => {
+    setSubmitting(true);
+    try {
+      const res = await markPartUndone(task._id);
+      toast.success(res.message);
+      refresh();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Không bỏ đánh dấu được."));
     } finally {
       setSubmitting(false);
     }
@@ -182,6 +174,55 @@ export function TaskDetailView({ id }: { id: string }) {
         </div>
 
         <div className="flex flex-wrap gap-2">
+          {can.partDone ? (
+            <Button
+              variant="outline"
+              className="border-emerald-400 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200"
+              onClick={() => setDialog("partDone")}
+            >
+              <CheckCheck className="size-4" />
+              Xong phần việc của tôi
+            </Button>
+          ) : null}
+          {can.partUndo ? (
+            <Button
+              variant="outline"
+              className="bg-background"
+              disabled={submitting}
+              onClick={() => void undoPart()}
+            >
+              <Undo2 className="size-4" />
+              Bỏ đánh dấu xong
+            </Button>
+          ) : null}
+          {can.progress ? (
+            <Button variant="outline" className="bg-background" onClick={() => setDialog("progress")}>
+              <TrendingUp className="size-4" />
+              Cập nhật tiến độ
+            </Button>
+          ) : null}
+          {can.report ? (
+            <Button onClick={() => setDialog("report")}>
+              <Flag className="size-4" />
+              Báo cáo hoàn thành
+            </Button>
+          ) : null}
+          {can.forward ? (
+            <Button variant="outline" className="bg-background" onClick={() => setDialog("forward")}>
+              <Forward className="size-4" />
+              Chuyển tiếp xử lý
+            </Button>
+          ) : null}
+          {can.recall ? (
+            <Button
+              variant="outline"
+              className="border-destructive/40 bg-destructive/5 text-destructive hover:bg-destructive/10 hover:text-destructive dark:border-destructive/50 dark:bg-destructive/10 dark:hover:bg-destructive/20"
+              onClick={() => setDialog("recall")}
+            >
+              <UserRoundX className="size-4" />
+              Thu hồi
+            </Button>
+          ) : null}
           {can.review ? (
             <>
               <Button variant="outline" className="bg-background" onClick={() => setDialog("return")}>
@@ -190,7 +231,7 @@ export function TaskDetailView({ id }: { id: string }) {
               </Button>
               <Button onClick={() => setDialog("approve")}>
                 <CheckCircle2 className="size-4" />
-                {final ? "Chốt" : "Duyệt"}
+                {final ? "Chốt" : completion ? "Xác nhận" : "Duyệt"}
               </Button>
             </>
           ) : null}
@@ -225,7 +266,14 @@ export function TaskDetailView({ id }: { id: string }) {
           <span className="ml-1 text-xs opacity-75">({when(task.lastReturn.at)})</span>
         </Notice>
       ) : null}
-      {task.status === "PENDING_REVIEW" && task.lastReturn ? (
+      {task.status === "IN_PROGRESS" && task.lastReturn && task.reportedAt ? (
+        <Notice tone="rose" title="Báo cáo hoàn thành bị trả lại">
+          {task.lastReturn.reason}
+          <span className="ml-1 text-xs opacity-75">({when(task.lastReturn.at)})</span>
+        </Notice>
+      ) : null}
+      {(task.status === "PENDING_REVIEW" || task.status === "PENDING_CONFIRMATION") &&
+      task.lastReturn ? (
         <Notice tone="rose" title="Lần trả lại gần nhất">
           {task.lastReturn.reason}
         </Notice>
@@ -236,7 +284,8 @@ export function TaskDetailView({ id }: { id: string }) {
           <span className="ml-1 text-xs opacity-75">({when(task.cancellation.at)})</span>
         </Notice>
       ) : null}
-      {task.proposal && task.status === "PENDING_REVIEW" ? (
+      {task.proposal &&
+      (task.status === "PENDING_REVIEW" || task.status === "PENDING_CONFIRMATION") ? (
         <Notice tone="emerald" title="Đề xuất của Phó ban (bước 1)">
           {[
             task.proposal.type ? TYPE_LABELS[task.proposal.type] : "",
@@ -248,17 +297,23 @@ export function TaskDetailView({ id }: { id: string }) {
         </Notice>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
-        <div className="space-y-4">
+      <div className="grid gap-4 lg:grid-cols-[1fr_460px] 2xl:grid-cols-[1fr_520px]">
+        <div className="min-w-0 space-y-4">
           <TaskInfoCard task={task} />
 
-          {task.reportedDone || task.result || task.status === "COMPLETED" ? (
+          {task.reportedDone ||
+          task.result ||
+          task.resultAttachments?.length ||
+          task.status === "COMPLETED" ? (
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Kết quả</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="whitespace-pre-line text-sm">{task.result || "-"}</p>
+                {task.resultAttachments?.length ? (
+                  <AttachmentList items={task.resultAttachments} />
+                ) : null}
                 {task.status === "COMPLETED" ? (
                   <div className="grid gap-4 sm:grid-cols-3">
                     <Field label="Đánh giá">
@@ -284,14 +339,24 @@ export function TaskDetailView({ id }: { id: string }) {
           </Card>
         </div>
 
-        <Card className="h-fit">
+        {/* Màn rộng: khung cao đúng bằng cột thông tin bên trái (tối thiểu
+            480px), dài quá thì cuộn bên trong danh sách; ô ý kiến luôn ở trên.
+            Màn hẹp: xếp dưới, cao tối đa 70% màn hình. */}
+        <div className="relative min-w-0 lg:min-h-[480px]">
+        <Card className="flex max-h-[70dvh] min-w-0 flex-col lg:absolute lg:inset-0 lg:max-h-none">
           <CardHeader>
-            <CardTitle className="text-base">Lịch sử xử lý</CardTitle>
+            <CardTitle className="text-base">Dòng thời gian</CardTitle>
           </CardHeader>
-          <CardContent>
-            <HistoryTimeline items={history} />
+          <CardContent className="flex min-h-0 flex-1 flex-col">
+            <TaskTimeline
+              taskId={task._id}
+              items={history}
+              canComment={can.comment}
+              onChanged={refresh}
+            />
           </CardContent>
         </Card>
+        </div>
       </div>
 
       {self ? (
@@ -318,6 +383,11 @@ export function TaskDetailView({ id }: { id: string }) {
         onDone={refresh}
       />
       <CancelDialog task={task} open={dialog === "cancel"} onOpenChange={(o) => setDialog(o ? "cancel" : null)} onDone={refresh} />
+      <ProgressDialog task={task} open={dialog === "progress"} onOpenChange={(o) => setDialog(o ? "progress" : null)} onDone={refresh} />
+      <ReportDialog task={task} open={dialog === "report"} onOpenChange={(o) => setDialog(o ? "report" : null)} onDone={refresh} />
+      <ForwardDialog task={task} open={dialog === "forward"} onOpenChange={(o) => setDialog(o ? "forward" : null)} onDone={refresh} />
+      <PartDoneDialog task={task} open={dialog === "partDone"} onOpenChange={(o) => setDialog(o ? "partDone" : null)} onDone={refresh} />
+      <RecallDialog task={task} open={dialog === "recall"} onOpenChange={(o) => setDialog(o ? "recall" : null)} onDone={refresh} />
     </div>
   );
 }

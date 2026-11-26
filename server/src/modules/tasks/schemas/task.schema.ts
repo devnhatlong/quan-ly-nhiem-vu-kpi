@@ -92,6 +92,25 @@ export class TaskEvent {
 export const TaskEventSchema = SchemaFactory.createForClass(TaskEvent);
 
 /**
+ * Người phối hợp đánh dấu xong phần việc của mình - chỉ là dấu riêng của người
+ * đó, không đổi trạng thái nhiệm vụ (chủ trì / người xử lý chính mới báo hoàn
+ * thành cả nhiệm vụ).
+ */
+@Schema({ _id: false })
+export class CollaboratorDone {
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  userId!: Types.ObjectId;
+
+  @Prop({ type: Date, required: true })
+  at!: Date;
+
+  @Prop({ default: '' })
+  note!: string;
+}
+export const CollaboratorDoneSchema =
+  SchemaFactory.createForClass(CollaboratorDone);
+
+/**
  * Nhiệm vụ - các trường theo §5 tài liệu sáng kiến. Không bao giờ xoá: giao
  * nhầm thì huỷ kèm lý do; mọi thay đổi ghi vào TaskHistory.
  */
@@ -143,6 +162,30 @@ export class Task {
   })
   collaboratorIds!: Types.ObjectId[];
 
+  /**
+   * Người xử lý chính hiện tại - người duy nhất cập nhật tiến độ và báo hoàn
+   * thành. Mặc định là chủ trì; chủ trì là Phó ban thì chuyển tiếp được cho trợ
+   * lý mình phụ trách. null (dữ liệu cũ) = chủ trì.
+   */
+  @Prop({ type: Types.ObjectId, ref: 'User', default: null, index: true })
+  handlerId!: Types.ObjectId | null;
+
+  /** Người từng xử lý chính rồi bị chuyển / thu hồi - vẫn xem và cho ý kiến được. */
+  @Prop({
+    type: [{ type: Types.ObjectId, ref: 'User' }],
+    default: [],
+    index: true,
+  })
+  formerHandlerIds!: Types.ObjectId[];
+
+  /** Người phối hợp đã xong phần việc của mình. */
+  @Prop({ type: [CollaboratorDoneSchema], default: [] })
+  collaboratorDone!: CollaboratorDone[];
+
+  /** Ai chuyển tiếp cho người xử lý chính (Phó ban chủ trì). null = chưa chuyển. */
+  @Prop({ type: Types.ObjectId, ref: 'User', default: null })
+  forwardedById!: Types.ObjectId | null;
+
   @Prop({ type: String, default: null })
   startDate!: string | null;
 
@@ -168,6 +211,14 @@ export class Task {
 
   @Prop({ type: [TaskAttachmentSchema], default: [] })
   attachments!: TaskAttachment[];
+
+  /** Văn bản / sản phẩm kèm báo cáo hoàn thành (khác tài liệu lúc giao). */
+  @Prop({ type: [TaskAttachmentSchema], default: [] })
+  resultAttachments!: TaskAttachment[];
+
+  /** Lúc người xử lý chính báo cáo hoàn thành gần nhất. */
+  @Prop({ type: Date, default: null })
+  reportedAt!: Date | null;
 
   @Prop({ type: TaskReviewSchema, default: null })
   review!: TaskReview | null;

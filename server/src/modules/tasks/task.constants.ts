@@ -79,6 +79,18 @@ export const HISTORY_ACTIONS = [
   'APPROVED',
   'RETURNED',
   'CANCELLED',
+  /** Chủ trì (Phó ban) chuyển tiếp cho trợ lý làm người xử lý chính. */
+  'FORWARDED',
+  /** Chủ trì lấy lại quyền xử lý chính. */
+  'RECALLED',
+  'PROGRESS',
+  /** Người xử lý chính báo cáo hoàn thành. */
+  'REPORTED',
+  /** Ý kiến trên dòng thời gian. */
+  'COMMENT',
+  /** Người phối hợp xong phần việc của mình / bỏ đánh dấu. */
+  'PART_DONE',
+  'PART_UNDONE',
 ] as const;
 export type HistoryAction = (typeof HISTORY_ACTIONS)[number];
 

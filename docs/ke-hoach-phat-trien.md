@@ -52,11 +52,14 @@ Xương sống của hệ thống - các trường theo §5.
 
 ## Giai đoạn 2 - Phân hệ 3 + 6: Tiến độ, báo cáo kết quả, xác nhận (≈4 ngày)
 
-- [ ] Cập nhật tiến độ: nút nhanh 0 / 25 / 50 / 75 / 100% hoặc nhập trực tiếp, kèm nội dung đã làm (§4.3).
-- [ ] Báo cáo hoàn thành: kết quả, đính kèm văn bản / sản phẩm (dùng phân hệ tải tệp có sẵn).
-- [ ] Trưởng ban xác nhận hoặc trả lại, chấm đánh giá kết quả (Đạt / Tốt...).
-- [ ] Luồng trạng thái: Mới → Đang thực hiện → Chờ xác nhận → Đã xác nhận (đóng); trả lại thì quay về Đang thực hiện; Huỷ. Nhiệm vụ chỉ rời danh sách theo dõi khi đã xác nhận, không phải khi trợ lý tự bấm "xong" (§7).
-- [ ] Không ai tự xác nhận việc mình chủ trì.
+- [x] Cập nhật tiến độ: nút nhanh 0 / 25 / 50 / 75 / 100% hoặc nhập trực tiếp, kèm nội dung đã làm (§4.3). Chỉ người xử lý chính (C4).
+- [x] Chuyển tiếp xử lý: Phó ban chủ trì chuyển cho trợ lý mình phụ trách, chuyển người khác, thu hồi (C9).
+- [x] Dòng thời gian có ý kiến kèm tệp; người phối hợp chỉ cho ý kiến (C4).
+- [x] Báo cáo hoàn thành: kết quả, đính kèm văn bản / sản phẩm (dùng phân hệ tải tệp có sẵn).
+- [x] Xác nhận 2 cấp (S8): Phó ban đề xuất mức đánh giá, Trưởng ban chốt; trả lại về Phó ban hoặc về người xử lý chính.
+- [x] Luồng trạng thái: Đang thực hiện → Chờ xác nhận → Đã hoàn thành; trả lại thì quay về Đang thực hiện; Huỷ (§7).
+- [x] Không ai tự xác nhận việc mình xử lý.
+- [ ] Đề nghị gia hạn (C6).
 
 ## Giai đoạn 3 - Phân hệ 5: Cảnh báo, nhắc việc (≈3 ngày)
 
