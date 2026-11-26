@@ -29,10 +29,8 @@ function hashSeed(seed: string): number {
   return Math.abs(h);
 }
 
-/** Màu badge mã đơn vị theo độ sâu trong cây (0 = gốc). */
-export function depthBadgeClass(depth = 0) {
-  return CODE_PALETTE[(depth + 7) % CODE_PALETTE.length];
-}
+/** Màu badge mã đơn vị. */
+export const unitCodeBadgeClass = CODE_PALETTE[7];
 
 /** Màu badge mã (vai trò / quyền / mã bất kỳ) - ổn định theo chuỗi. */
 export function codeBadgeClass(code: string) {

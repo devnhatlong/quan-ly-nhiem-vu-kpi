@@ -9,7 +9,6 @@ import type {
 const UNIT_HEADERS = [
   "code",
   "name",
-  "parentCode",
   "sortOrder",
   "isActive",
 ] as const;
@@ -73,13 +72,11 @@ export async function downloadUnitsImportTemplate() {
 
   ws.addRow([...UNIT_HEADERS]);
   ws.getRow(1).font = { bold: true };
-  ws.addRow(["P01", "Phòng ...", "", 0, true]);
-  ws.addRow(["TMKH", "Ban Tham mưu Kế hoạch", "P01", 1, true]);
+  ws.addRow(["TMKH", "Ban Tham mưu Kế hoạch", 0, true]);
 
   ws.columns = [
     { width: 14 }, // code
     { width: 36 }, // name
-    { width: 14 }, // parentCode
     { width: 12 }, // sortOrder
     { width: 12 }, // isActive
   ]
@@ -119,9 +116,6 @@ export async function parseUnitsExcel(
     const name = cellText(row.getCell(col("name")!).value);
     if (!code && !name) return;
 
-    const parentCode = col("parentcode")
-      ? cellText(row.getCell(col("parentcode")!).value) || undefined
-      : undefined;
     const sortRaw = col("sortorder")
       ? cellText(row.getCell(col("sortorder")!).value)
       : "";
@@ -132,7 +126,6 @@ export async function parseUnitsExcel(
     rows.push({
       code,
       name,
-      parentCode,
       sortOrder: sortRaw ? Number(sortRaw) || 0 : undefined,
       isActive: parseBool(activeRaw),
     });

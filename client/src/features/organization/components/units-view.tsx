@@ -2,15 +2,11 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  Expand,
-  FolderTree,
-  MinusSquare,
-  Network,
+  Building2,
+  CircleDot,
   Pencil,
   Plus,
-  PlusSquare,
   Search,
-  Shrink,
   Trash2,
   Upload,
   Users,
@@ -47,7 +43,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TablePagination } from "@/components/common/table-pagination";
 import {
   deleteDepartment,
@@ -57,162 +52,25 @@ import {
 } from "@/features/organization/api";
 import { ImportUnitsDialog } from "@/features/organization/components/import-units-dialog";
 import { UnitFormDialog } from "@/features/organization/components/unit-form-dialog";
-import {
-  breadcrumbPath,
-  buildUnitTree,
-  collectIds,
-  filterTree,
-  type UnitTreeNode,
-} from "@/features/organization/tree-utils";
 import type { Department } from "@/features/organization/types";
 import { entityId } from "@/features/organization/types";
 import {
   activeBadgeClass,
   inactiveBadgeClass,
-  depthBadgeClass,
+  unitCodeBadgeClass,
 } from "@/features/organization/badge-styles";
+import { ROLE_LABELS } from "@/features/auth/types";
 import { getApiErrorMessage } from "@/lib/api-client";
 import { DEFAULT_PAGE_SIZE, rowIndex } from "@/lib/pagination";
 import { cn } from "@/lib/utils";
 
-/** Cột indent - khoảng cách rõ với cha. Node lá không có slot icon → sát trục hơn. */
-const TREE_COL = 24;
-const TREE_LINE_X = 12;
-const TREE_ROW_H = 36;
-const TREE_STUB_LEAF = 8; // nhánh ngang ngắn cho node không có con
-const TREE_STUB_BRANCH = TREE_COL - TREE_LINE_X; // nhánh tới icon +/-
-const TREE_LINE = "pointer-events-none absolute w-px bg-muted-foreground/40";
-
-function TreeItem({
-  node,
-  depth,
-  isLast,
-  guides,
-  selectedId,
-  expanded,
-  onToggle,
-  onSelect,
-}: {
-  node: UnitTreeNode;
-  depth: number;
-  isLast: boolean;
-  /** true = còn anh/em phía dưới → vẽ trục dọc liên tục ở cột đó */
-  guides: boolean[];
-  selectedId: string;
-  expanded: Set<string>;
-  onToggle: (id: string) => void;
-  onSelect: (id: string) => void;
-}) {
-  const hasChildren = node.children.length > 0;
-  const isOpen = expanded.has(node.id);
-  const selected = selectedId === node.id;
-  const stubWidth = hasChildren ? TREE_STUB_BRANCH : TREE_STUB_LEAF;
-  /** Lá sát trục; node có con cách ra để chỗ icon +/- */
-  const contentPad =
-    depth === 0 ? 0 : (depth - 1) * TREE_COL + TREE_LINE_X + stubWidth;
-
-  return (
-    <div className="relative w-fit max-w-full">
-      <button
-        type="button"
-        onClick={() => onSelect(node.id)}
-        className="group relative inline-flex h-9 cursor-pointer items-center text-left text-sm"
-      >
-        {contentPad > 0 ? (
-          <span
-            className="inline-block shrink-0"
-            style={{ width: contentPad }}
-            aria-hidden
-          />
-        ) : null}
-
-        {depth > 0 ? (
-          <span
-            aria-hidden
-            className="pointer-events-none absolute top-1/2 h-px bg-muted-foreground/40"
-            style={{
-              left: (depth - 1) * TREE_COL + TREE_LINE_X,
-              width: stubWidth,
-            }}
-          />
-        ) : null}
-
-        <span
-          className={cn(
-            "inline-flex w-fit cursor-pointer items-center gap-1 rounded-md px-1.5 py-1.5 transition-colors",
-            selected
-              ? "bg-primary/10 text-foreground dark:bg-primary/25"
-              : "group-hover:bg-blue-50 group-hover:text-foreground dark:group-hover:bg-blue-950/70",
-          )}
-        >
-          {hasChildren ? (
-            <span
-              role="button"
-              tabIndex={-1}
-              className="inline-flex size-4 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggle(node.id);
-              }}
-            >
-              {isOpen ? (
-                <MinusSquare className="size-3.5" strokeWidth={1.75} />
-              ) : (
-                <PlusSquare className="size-3.5" strokeWidth={1.75} />
-              )}
-            </span>
-          ) : null}
-
-          <Badge
-            className={cn(
-              "min-w-[2.75rem] shrink-0 justify-center rounded px-1.5 py-0 text-[10px] font-bold tracking-wide",
-              depthBadgeClass(node.department.depth),
-            )}
-          >
-            {node.department.code}
-          </Badge>
-          <span className="whitespace-nowrap">{node.department.name}</span>
-        </span>
-      </button>
-
-      {hasChildren && isOpen ? (
-        <div className="relative">
-          {guides.map((continueLine, i) =>
-            continueLine ? (
-              <span
-                key={i}
-                aria-hidden
-                className={cn(TREE_LINE, "inset-y-0")}
-                style={{ left: i * TREE_COL + TREE_LINE_X }}
-              />
-            ) : null,
-          )}
-          <span
-            aria-hidden
-            className={TREE_LINE}
-            style={{
-              left: depth * TREE_COL + TREE_LINE_X,
-              top: 0,
-              bottom: TREE_ROW_H / 2,
-            }}
-          />
-          {node.children.map((child, index) => (
-            <TreeItem
-              key={child.id}
-              node={child}
-              depth={depth + 1}
-              isLast={index === node.children.length - 1}
-              guides={depth === 0 ? [] : [...guides, !isLast]}
-              selectedId={selectedId}
-              expanded={expanded}
-              onToggle={onToggle}
-              onSelect={onSelect}
-            />
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
+/** Bỏ dấu để tìm "tham muu" vẫn ra "Tham mưu". */
+function fold(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/đ/g, "d")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "");
 }
 
 export function UnitsView() {
@@ -225,27 +83,38 @@ export function UnitsView() {
     revalidateOnFocus: false,
   });
 
-  const { data: users = [] } = useSWR(departmentKeys.users, fetchUsers, {
-    revalidateOnFocus: false,
-  });
+  const { data: users = [], mutate: mutateUsers } = useSWR(
+    departmentKeys.users,
+    fetchUsers,
+    { revalidateOnFocus: false },
+  );
 
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState("");
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [formOpen, setFormOpen] = useState(false);
   const [formEdit, setFormEdit] = useState<Department | null>(null);
-  const [formParentId, setFormParentId] = useState<string | undefined>();
   const [importOpen, setImportOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Department | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [childrenPage, setChildrenPage] = useState(1);
-  const [childrenLimit, setChildrenLimit] = useState(DEFAULT_PAGE_SIZE);
   const [usersPage, setUsersPage] = useState(1);
   const [usersLimit, setUsersLimit] = useState(DEFAULT_PAGE_SIZE);
 
-  const tree = useMemo(() => buildUnitTree(departments), [departments]);
-  const filteredTree = useMemo(() => filterTree(tree, query), [tree, query]);
-  const allIds = useMemo(() => collectIds(tree), [tree]);
+  const memberCount = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const user of users) {
+      const id = String(user.departmentId ?? "");
+      if (id) counts.set(id, (counts.get(id) ?? 0) + 1);
+    }
+    return counts;
+  }, [users]);
+
+  const filtered = useMemo(() => {
+    const q = fold(query.trim());
+    if (!q) return departments;
+    return departments.filter(
+      (d) => fold(d.name).includes(q) || fold(d.code).includes(q),
+    );
+  }, [departments, query]);
 
   const effectiveSelectedId = useMemo(() => {
     if (selectedId && departments.some((d) => entityId(d) === selectedId)) {
@@ -255,67 +124,31 @@ export function UnitsView() {
   }, [selectedId, departments]);
 
   const selected = departments.find((d) => entityId(d) === effectiveSelectedId);
-  const children = departments.filter((d) => {
-    const parentId =
-      typeof d.parentId === "string"
-        ? d.parentId
-        : entityId(d.parentId as { _id?: string; id?: string } | null);
-    return parentId === effectiveSelectedId;
-  });
   const unitUsers = users.filter(
     (u) => String(u.departmentId ?? "") === effectiveSelectedId,
   );
-
-  const childrenTotalPages = Math.max(
-    1,
-    Math.ceil(children.length / childrenLimit),
-  );
   const usersTotalPages = Math.max(1, Math.ceil(unitUsers.length / usersLimit));
-  const pagedChildren = children.slice(
-    (childrenPage - 1) * childrenLimit,
-    childrenPage * childrenLimit,
-  );
   const pagedUsers = unitUsers.slice(
     (usersPage - 1) * usersLimit,
     usersPage * usersLimit,
   );
 
-  const crumb = selected
-    ? breadcrumbPath(departments, effectiveSelectedId)
-    : "";
-
   useEffect(() => {
-    setChildrenPage(1);
     setUsersPage(1);
   }, [effectiveSelectedId]);
-
-  useEffect(() => {
-    if (childrenPage > childrenTotalPages) setChildrenPage(childrenTotalPages);
-  }, [childrenPage, childrenTotalPages]);
 
   useEffect(() => {
     if (usersPage > usersTotalPages) setUsersPage(usersTotalPages);
   }, [usersPage, usersTotalPages]);
 
-  const openCreate = (parentId?: string) => {
+  const openCreate = () => {
     setFormEdit(null);
-    setFormParentId(parentId);
     setFormOpen(true);
   };
 
   const openEdit = (dept: Department) => {
     setFormEdit(dept);
-    setFormParentId(undefined);
     setFormOpen(true);
-  };
-
-  const toggleExpand = (id: string) => {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
   };
 
   const confirmDelete = async () => {
@@ -334,20 +167,14 @@ export function UnitsView() {
     }
   };
 
-  const refresh = () => mutateDepts();
+  const refresh = () => {
+    void mutateDepts();
+    void mutateUsers();
+  };
 
-  useEffect(() => {
-    if (tree.length === 0) return;
-    setExpanded((prev) => {
-      if (prev.size > 0) return prev;
-      const seed = new Set<string>();
-      for (const root of tree) {
-        seed.add(root.id);
-        for (const child of root.children) seed.add(child.id);
-      }
-      return seed;
-    });
-  }, [tree]);
+  const deleteMembers = deleteTarget
+    ? (memberCount.get(entityId(deleteTarget)) ?? 0)
+    : 0;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
@@ -373,9 +200,9 @@ export function UnitsView() {
             <Upload />
             Import Excel
           </Button>
-          <Button onClick={() => openCreate()}>
+          <Button onClick={openCreate}>
             <Plus />
-            Thêm đơn vị gốc
+            Thêm đơn vị
           </Button>
         </div>
       </div>
@@ -392,94 +219,91 @@ export function UnitsView() {
       ) : null}
 
       <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(260px,320px)_1fr] lg:grid-rows-[minmax(0,1fr)]">
-        {/* Tree - cuộn dọc/ngang trong panel, không kéo cả trang */}
-        <Card className="flex h-full min-h-0 max-h-full flex-col overflow-hidden border-border/80 shadow-sm">
-          <div className="space-y-2 border-b bg-muted/30 p-3">
+        {/* Danh sách đơn vị - cuộn trong khung, không kéo cả trang */}
+        <Card className="flex h-full min-h-0 max-h-full flex-col overflow-hidden border-border/80 py-0 shadow-sm">
+          <div className="border-b bg-muted/30 p-3">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Tìm đơn vị..."
+                placeholder="Tìm theo mã hoặc tên..."
                 className="pl-8"
               />
-            </div>
-            <div className="flex gap-1">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="flex-1"
-                onClick={() => setExpanded(new Set(allIds))}
-              >
-                <Expand className="h-3.5 w-3.5" />
-                Mở rộng
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="flex-1"
-                onClick={() => setExpanded(new Set())}
-              >
-                <Shrink className="h-3.5 w-3.5" />
-                Thu gọn
-              </Button>
             </div>
           </div>
           <div className="min-h-0 flex-1 overflow-auto p-2">
             {deptLoading ? (
               <p className="p-4 text-sm text-muted-foreground">Đang tải...</p>
-            ) : filteredTree.length === 0 ? (
+            ) : filtered.length === 0 ? (
               <p className="p-4 text-sm text-muted-foreground">
-                Chưa có đơn vị.
+                {departments.length ? "Không có đơn vị phù hợp." : "Chưa có đơn vị."}
               </p>
             ) : (
-              <div className="min-w-max">
-                {filteredTree.map((node, index) => (
-                  <TreeItem
-                    key={node.id}
-                    node={node}
-                    depth={0}
-                    isLast={index === filteredTree.length - 1}
-                    guides={[]}
-                    selectedId={effectiveSelectedId}
-                    expanded={expanded}
-                    onToggle={toggleExpand}
-                    onSelect={setSelectedId}
-                  />
-                ))}
-              </div>
+              <ul className="space-y-0.5">
+                {filtered.map((dept) => {
+                  const id = entityId(dept);
+                  const active = id === effectiveSelectedId;
+                  return (
+                    <li key={id}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedId(id)}
+                        aria-current={active ? "true" : undefined}
+                        className={cn(
+                          "flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors",
+                          active
+                            ? "bg-primary/10 text-foreground dark:bg-primary/25"
+                            : "hover:bg-muted",
+                          !dept.isActive && "text-muted-foreground",
+                        )}
+                      >
+                        <Badge
+                          className={cn(
+                            "min-w-[2.75rem] shrink-0 justify-center rounded px-1.5 py-0 text-[10px] font-bold tracking-wide",
+                            unitCodeBadgeClass,
+                          )}
+                        >
+                          {dept.code}
+                        </Badge>
+                        <span className="min-w-0 flex-1 truncate">
+                          {dept.name}
+                        </span>
+                        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                          {memberCount.get(id) ?? 0}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
             )}
           </div>
         </Card>
 
-        {/* Detail */}
-        <Card className="flex h-full min-h-0 max-h-full flex-col overflow-hidden border-border/80 shadow-sm">
+        {/* Chi tiết */}
+        <Card className="flex h-full min-h-0 max-h-full flex-col overflow-hidden border-border/80 py-0 shadow-sm">
           <CardContent className="min-h-0 flex-1 overflow-auto p-4">
             {!selected ? (
               <div className="flex flex-col items-center justify-center gap-2 py-20 text-muted-foreground">
-                <FolderTree className="h-10 w-10 opacity-40" />
-                <p className="text-sm">Chọn một đơn vị để xem chi tiết</p>
+                <Building2 className="h-10 w-10 opacity-40" />
+                <p className="text-sm">
+                  {departments.length
+                    ? "Chọn một đơn vị để xem chi tiết"
+                    : 'Chưa có đơn vị. Bấm "Thêm đơn vị" để tạo.'}
+                </p>
               </div>
             ) : (
               <>
                 <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 space-y-1.5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="font-display text-xl font-semibold tracking-tight md:text-2xl">
-                        {selected.name}
-                      </h2>
-                    </div>
-                    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-                      <Network className="h-3.5 w-3.5 shrink-0" />
-                      <span>{crumb}</span>
-                      <span>·</span>
-                      <span>
-                        Mã:{" "}
-                        <span className="font-medium text-foreground">
-                          {selected.code}
-                        </span>
+                    <h2 className="font-display text-xl font-semibold tracking-tight md:text-2xl">
+                      {selected.name}
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      Mã:{" "}
+                      <span className="font-medium text-foreground">
+                        {selected.code}
                       </span>
                     </p>
                   </div>
@@ -503,13 +327,7 @@ export function UnitsView() {
                   </div>
                 </div>
 
-                <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3">
-                  <StatBox
-                    icon={<Network className="h-4 w-4" />}
-                    label="Đơn vị con"
-                    value={String(children.length)}
-                    className="bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200"
-                  />
+                <div className="mb-5 grid grid-cols-2 gap-3">
                   <StatBox
                     icon={<Users className="h-4 w-4" />}
                     label="Tài khoản"
@@ -517,242 +335,104 @@ export function UnitsView() {
                     className="bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
                   />
                   <StatBox
-                    icon={<FolderTree className="h-4 w-4" />}
+                    icon={<CircleDot className="h-4 w-4" />}
                     label="Trạng thái"
                     value={selected.isActive ? "Hoạt động" : "Ngưng"}
                     className="bg-violet-50 text-violet-800 dark:bg-violet-950/40 dark:text-violet-200"
                   />
                 </div>
 
-                <Tabs defaultValue="children">
-                  <TabsList className="bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-200">
-                    <TabsTrigger
-                      value="children"
-                      className="group data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
-                    >
-                      Đơn vị con
-                      <Badge className="ml-1.5 h-5 border-0 bg-blue-100 px-1.5 text-blue-700 group-data-[state=active]:bg-white/20 group-data-[state=active]:text-white dark:bg-blue-900/50 dark:text-blue-200">
-                        {children.length}
-                      </Badge>
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="accounts"
-                      className="group data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
-                    >
-                      Tài khoản
-                      <Badge className="ml-1.5 h-5 border-0 bg-blue-100 px-1.5 text-blue-700 group-data-[state=active]:bg-white/20 group-data-[state=active]:text-white dark:bg-blue-900/50 dark:text-blue-200">
-                        {unitUsers.length}
-                      </Badge>
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="children" className="space-y-3 pt-3">
-                    <div className="flex justify-end">
-                      <Button
-                        size="sm"
-                        onClick={() => openCreate(effectiveSelectedId)}
-                      >
-                        <Plus />
-                        Thêm đơn vị con
-                      </Button>
-                    </div>
-                    <div className="rounded-lg border">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-14">STT</TableHead>
-                            <TableHead className="w-28">Mã</TableHead>
-                            <TableHead>Tên</TableHead>
-                            <TableHead className="w-28">Trạng thái</TableHead>
-                            <TableHead className="w-24 text-right">
-                              Thao tác
-                            </TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {children.length === 0 ? (
-                            <TableRow>
-                              <TableCell
-                                colSpan={5}
-                                className="h-24 text-center text-muted-foreground"
-                              >
-                                Chưa có đơn vị con. Bấm &quot;Thêm đơn vị
-                                con&quot;.
-                              </TableCell>
-                            </TableRow>
-                          ) : (
-                            pagedChildren.map((child, i) => {
-                              return (
-                                <TableRow key={entityId(child)}>
-                                  <TableCell className="text-muted-foreground">
-                                    {rowIndex(childrenPage, childrenLimit, i)}
-                                  </TableCell>
-                                  <TableCell>
+                <h3 className="mb-2 text-sm font-semibold">
+                  Tài khoản trong đơn vị
+                </h3>
+                <div className="rounded-lg border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-14">STT</TableHead>
+                        <TableHead>Họ tên</TableHead>
+                        <TableHead>Tên đăng nhập</TableHead>
+                        <TableHead>Chức vụ</TableHead>
+                        <TableHead>Vai trò</TableHead>
+                        <TableHead className="w-28">Trạng thái</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {unitUsers.length === 0 ? (
+                        <TableRow>
+                          <TableCell
+                            colSpan={6}
+                            className="h-24 text-center text-muted-foreground"
+                          >
+                            Chưa có tài khoản thuộc đơn vị này.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        pagedUsers.map((user, i) => (
+                          <TableRow key={user.id}>
+                            <TableCell className="text-muted-foreground">
+                              {rowIndex(usersPage, usersLimit, i)}
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {user.rank ? `${user.rank} ` : ""}
+                              {user.fullName || "-"}
+                            </TableCell>
+                            <TableCell>{user.username}</TableCell>
+                            <TableCell>{user.position || "-"}</TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap gap-1">
+                                {(user.roleAssignments ?? []).length === 0 ? (
+                                  <span className="text-muted-foreground">
+                                    -
+                                  </span>
+                                ) : (
+                                  user.roleAssignments.map((r) => (
                                     <Badge
-                                      className={depthBadgeClass(
-                                        child.depth,
-                                      )}
-                                    >
-                                      {child.code}
-                                    </Badge>
-                                  </TableCell>
-                                  <TableCell>
-                                    <button
-                                      type="button"
-                                      className="cursor-pointer font-medium text-primary hover:underline"
-                                      onClick={() =>
-                                        setSelectedId(entityId(child))
-                                      }
-                                    >
-                                      {child.name}
-                                    </button>
-                                  </TableCell>
-                                  <TableCell>
-                                    {child.isActive ? (
-                                      <Badge
-                                        variant="outline"
-                                        className={activeBadgeClass}
-                                      >
-                                        Hoạt động
-                                      </Badge>
-                                    ) : (
-                                      <Badge
-                                        variant="outline"
-                                        className={inactiveBadgeClass}
-                                      >
-                                        Ngưng
-                                      </Badge>
-                                    )}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => openEdit(child)}
-                                    >
-                                      <Pencil className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => setDeleteTarget(child)}
-                                    >
-                                      <Trash2 className="h-4 w-4 text-destructive" />
-                                    </Button>
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                    {children.length > 0 ? (
-                      <TablePagination
-                        page={childrenPage}
-                        limit={childrenLimit}
-                        total={children.length}
-                        totalPages={childrenTotalPages}
-                        onPageChange={setChildrenPage}
-                        onLimitChange={(next) => {
-                          setChildrenLimit(next);
-                          setChildrenPage(1);
-                        }}
-                      />
-                    ) : null}
-                  </TabsContent>
-
-                  <TabsContent value="accounts" className="space-y-3 pt-3">
-                    <div className="rounded-lg border">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-14">STT</TableHead>
-                            <TableHead>Họ tên</TableHead>
-                            <TableHead>Tên đăng nhập</TableHead>
-                            <TableHead>Email</TableHead>
-                            <TableHead>Vai trò</TableHead>
-                            <TableHead className="w-28">Trạng thái</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {unitUsers.length === 0 ? (
-                            <TableRow>
-                              <TableCell
-                                colSpan={6}
-                                className="h-24 text-center text-muted-foreground"
-                              >
-                                Chưa có tài khoản thuộc đơn vị này.
-                              </TableCell>
-                            </TableRow>
-                          ) : (
-                            pagedUsers.map((user, i) => (
-                              <TableRow key={user.id}>
-                                <TableCell className="text-muted-foreground">
-                                  {rowIndex(usersPage, usersLimit, i)}
-                                </TableCell>
-                                <TableCell className="font-medium">
-                                  {user.fullName || "-"}
-                                </TableCell>
-                                <TableCell>{user.username}</TableCell>
-                                <TableCell>{user.email || "-"}</TableCell>
-                                <TableCell>
-                                  <div className="flex flex-wrap gap-1">
-                                    {(user.roleAssignments ?? []).length ===
-                                    0 ? (
-                                      <span className="text-muted-foreground">
-                                        -
-                                      </span>
-                                    ) : (
-                                      user.roleAssignments.map((r) => (
-                                        <Badge
-                                          key={`${user.id}-${r.roleCode}`}
-                                          variant="outline"
-                                        >
-                                          {r.roleCode}
-                                        </Badge>
-                                      ))
-                                    )}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  {user.isActive ? (
-                                    <Badge
+                                      key={`${user.id}-${r.roleCode}`}
                                       variant="outline"
-                                      className={activeBadgeClass}
                                     >
-                                      Hoạt động
+                                      {ROLE_LABELS[r.roleCode] ?? r.roleCode}
                                     </Badge>
-                                  ) : (
-                                    <Badge
-                                      variant="outline"
-                                      className={inactiveBadgeClass}
-                                    >
-                                      Ngưng
-                                    </Badge>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            ))
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                    {unitUsers.length > 0 ? (
-                      <TablePagination
-                        page={usersPage}
-                        limit={usersLimit}
-                        total={unitUsers.length}
-                        totalPages={usersTotalPages}
-                        onPageChange={setUsersPage}
-                        onLimitChange={(next) => {
-                          setUsersLimit(next);
-                          setUsersPage(1);
-                        }}
-                      />
-                    ) : null}
-                  </TabsContent>
-                </Tabs>
+                                  ))
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {user.isActive ? (
+                                <Badge
+                                  variant="outline"
+                                  className={activeBadgeClass}
+                                >
+                                  Hoạt động
+                                </Badge>
+                              ) : (
+                                <Badge
+                                  variant="outline"
+                                  className={inactiveBadgeClass}
+                                >
+                                  Ngưng
+                                </Badge>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+                {unitUsers.length > 0 ? (
+                  <TablePagination
+                    page={usersPage}
+                    limit={usersLimit}
+                    total={unitUsers.length}
+                    totalPages={usersTotalPages}
+                    onPageChange={setUsersPage}
+                    onLimitChange={(next) => {
+                      setUsersLimit(next);
+                      setUsersPage(1);
+                    }}
+                  />
+                ) : null}
               </>
             )}
           </CardContent>
@@ -762,9 +442,7 @@ export function UnitsView() {
       <UnitFormDialog
         open={formOpen}
         onOpenChange={setFormOpen}
-        departments={departments}
         edit={formEdit}
-        defaultParentId={formParentId}
         onSuccess={refresh}
       />
 
@@ -782,8 +460,10 @@ export function UnitsView() {
           <AlertDialogHeader>
             <AlertDialogTitle>Xoá đơn vị?</AlertDialogTitle>
             <AlertDialogDescription>
-              Xoá &quot;{deleteTarget?.name}&quot; ({deleteTarget?.code}). Chỉ
-              xoá được khi không còn đơn vị con.
+              Xoá &quot;{deleteTarget?.name}&quot; ({deleteTarget?.code}).{" "}
+              {deleteMembers
+                ? `Đơn vị còn ${deleteMembers} tài khoản - chuyển hoặc xoá các tài khoản đó trước thì mới xoá được.`
+                : "Chỉ xoá được khi đơn vị không còn tài khoản."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -793,7 +473,7 @@ export function UnitsView() {
                 e.preventDefault();
                 void confirmDelete();
               }}
-              disabled={deleting}
+              disabled={deleting || deleteMembers > 0}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleting ? "Đang xoá..." : "Xoá"}

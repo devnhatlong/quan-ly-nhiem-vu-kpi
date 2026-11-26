@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { SearchableSelect } from "@/components/common/searchable-select";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,25 +28,18 @@ import { getApiErrorMessage } from "@/lib/api-client";
 type UnitFormDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  departments: Department[];
   edit?: Department | null;
-  defaultParentId?: string;
   onSuccess: () => void;
 };
-
-const NONE = "__none__";
 
 export function UnitFormDialog({
   open,
   onOpenChange,
-  departments,
   edit,
-  defaultParentId,
   onSuccess,
 }: UnitFormDialogProps) {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
-  const [parentId, setParentId] = useState(NONE);
   const [sortOrder, setSortOrder] = useState("0");
   const [isActive, setIsActive] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -57,36 +49,15 @@ export function UnitFormDialog({
     if (edit) {
       setCode(edit.code);
       setName(edit.name);
-      setParentId(
-        entityId(edit.parentId as { _id?: string; id?: string } | string) ||
-          NONE,
-      );
       setSortOrder(String(edit.sortOrder ?? 0));
       setIsActive(edit.isActive);
     } else {
       setCode("");
       setName("");
-      setParentId(defaultParentId || NONE);
       setSortOrder("0");
       setIsActive(true);
     }
-  }, [open, edit, defaultParentId]);
-
-  const editId = edit ? entityId(edit) : "";
-
-  const parentOptions = useMemo(
-    () => [
-      { value: NONE, label: "- Đơn vị gốc -" },
-      ...departments
-        .filter((d) => entityId(d) !== editId)
-        .map((d) => ({
-          value: entityId(d),
-          label: `${d.code} - ${d.name}`,
-          keywords: d.code,
-        })),
-    ],
-    [departments, editId],
-  );
+  }, [open, edit]);
 
   const submit = async () => {
     if (!code.trim() || !name.trim()) {
@@ -100,14 +71,12 @@ export function UnitFormDialog({
       sortOrder: Number(sortOrder) || 0,
       isActive,
     };
-    if (parentId !== NONE) payload.parentId = parentId;
 
     setSaving(true);
     try {
       if (edit) {
         await updateDepartment(entityId(edit), {
           ...payload,
-          parentId: parentId === NONE ? null : parentId,
         });
         toast.success("Đã cập nhật đơn vị.");
       } else {
@@ -138,7 +107,7 @@ export function UnitFormDialog({
                 id="unit-code"
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
-                placeholder="VD: CNTT"
+                placeholder="VD: TMKH"
               />
             </div>
             <div className="space-y-2">
@@ -147,20 +116,7 @@ export function UnitFormDialog({
                 id="unit-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="VD: Đội Công nghệ thông tin"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Thuộc đơn vị</Label>
-              <SearchableSelect
-                value={parentId}
-                onValueChange={setParentId}
-                options={parentOptions}
-                placeholder="Đơn vị cha"
-                searchPlaceholder="Tìm đơn vị..."
+                placeholder="VD: Ban Tham mưu Kế hoạch"
               />
             </div>
           </div>

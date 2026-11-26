@@ -21,6 +21,7 @@ type ImportRowResult = {
   message: string;
 };
 
+/** Đơn vị là danh sách phẳng - không có đơn vị cha / con. */
 @Injectable()
 export class DepartmentsService {
   constructor(
@@ -35,16 +36,10 @@ export class DepartmentsService {
       throw new BadRequestException('Mã đơn vị đã tồn tại.');
     }
 
-    const tree = await this.resolveTreeFields(dto.parentId);
-
     const department = await this.departmentModel.create({
       code,
       name: dto.name.trim(),
       slug: Helper.slugify(dto.name),
-      parentId: tree.parentId,
-      ancestors: tree.ancestors,
-      path: tree.path,
-      depth: tree.depth,
       sortOrder: dto.sortOrder ?? 0,
       isActive: dto.isActive ?? true,
     });
@@ -63,16 +58,10 @@ export class DepartmentsService {
       filter.$or = [{ code: regex }, { name: regex }];
     }
 
-    const sort = { depth: 1 as const, sortOrder: 1 as const, name: 1 as const };
-    const populate = [
-      { path: 'parentId', select: 'code name' },
-    ];
+    const sort = { sortOrder: 1 as const, name: 1 as const };
 
     if (query.all) {
-      const data = await this.departmentModel
-        .find(filter)
-        .sort(sort)
-        .populate(populate);
+      const data = await this.departmentModel.find(filter).sort(sort);
       return buildPaginatedResponse(data, data.length, 1, data.length || 1);
     }
 
@@ -81,12 +70,7 @@ export class DepartmentsService {
     const skip = (page - 1) * limit;
 
     const [data, total] = await Promise.all([
-      this.departmentModel
-        .find(filter)
-        .sort(sort)
-        .skip(skip)
-        .limit(limit)
-        .populate(populate),
+      this.departmentModel.find(filter).sort(sort).skip(skip).limit(limit),
       this.departmentModel.countDocuments(filter),
     ]);
 
@@ -94,17 +78,11 @@ export class DepartmentsService {
   }
 
   async findOne(id: string) {
-    const department = await this.requireDepartment(id);
-    await department.populate([
-      { path: 'parentId', select: 'code name' },
-    ]);
-    return department;
+    return this.requireDepartment(id);
   }
 
   async update(id: string, dto: UpdateDepartmentDto) {
     const department = await this.requireDepartment(id);
-    const oldPath = department.path;
-    const oldIdPath = `${oldPath}${department._id}/`;
 
     if (dto.code !== undefined) {
       const code = dto.code.trim().toUpperCase();
@@ -130,42 +108,7 @@ export class DepartmentsService {
       department.isActive = dto.isActive;
     }
 
-    if (dto.parentId !== undefined) {
-      const newParentId =
-        dto.parentId === null || dto.parentId === '' ? undefined : dto.parentId;
-
-      if (newParentId === id) {
-        throw new BadRequestException('Đơn vị không thể là cha của chính nó.');
-      }
-
-      if (newParentId) {
-        if (!Types.ObjectId.isValid(newParentId)) {
-          throw new BadRequestException('Mã đơn vị cha không hợp lệ.');
-        }
-        const parent = await this.requireDepartment(newParentId);
-        const isDescendant = parent.ancestors.some(
-          (ancestorId) => ancestorId.toString() === id,
-        );
-        if (isDescendant || parent._id.toString() === id) {
-          throw new BadRequestException(
-            'Không thể chọn đơn vị con làm đơn vị cha.',
-          );
-        }
-      }
-
-      const tree = await this.resolveTreeFields(newParentId);
-      department.parentId = tree.parentId;
-      department.ancestors = tree.ancestors;
-      department.path = tree.path;
-      department.depth = tree.depth;
-    }
-
     await department.save();
-
-    if (dto.parentId !== undefined) {
-      const newIdPath = `${department.path}${department._id}/`;
-      await this.rebuildDescendants(department, oldIdPath, newIdPath);
-    }
 
     return {
       message: 'Cập nhật đơn vị thành công.',
@@ -173,14 +116,19 @@ export class DepartmentsService {
     };
   }
 
+  /**
+   * Không xoá đơn vị còn tài khoản: xoá đi thì các tài khoản đó trỏ vào một
+   * đơn vị không còn, mất luôn Trưởng ban / Phó ban / phân công phụ trách.
+   * Đọc thẳng collection users - kéo UsersModule vào đây là vòng phụ thuộc.
+   */
   async remove(id: string) {
     const department = await this.requireDepartment(id);
-    const childCount = await this.departmentModel.countDocuments({
-      parentId: department._id,
-    });
-    if (childCount > 0) {
+    const members = await this.departmentModel.db
+      .collection('users')
+      .countDocuments({ departmentId: department._id });
+    if (members > 0) {
       throw new BadRequestException(
-        'Không thể xóa đơn vị còn đơn vị con. Hãy xóa hoặc chuyển đơn vị con trước.',
+        `Không thể xoá đơn vị còn ${members} tài khoản. Chuyển hoặc xoá các tài khoản đó trước.`,
       );
     }
 
@@ -189,130 +137,62 @@ export class DepartmentsService {
     return { message: 'Xóa đơn vị thành công.' };
   }
 
-  /**
-   * Import theo mã (code / parentCode).
-   * Tạo theo thứ tự phụ thuộc: đơn vị cha trước đơn vị con.
-   * Mã đã tồn tại → bỏ qua (không ghi đè).
-   */
+  /** Import theo mã. Mã đã tồn tại → bỏ qua (không ghi đè). */
   async importMany(rows: ImportDepartmentRowDto[]) {
     const results: ImportRowResult[] = [];
-    const normalized = rows.map((row, index) => ({
-      index: index + 1,
-      code: String(row.code ?? '')
+    const existing = await this.departmentModel.find().select('code');
+    const codes = new Set(existing.map((d) => d.code.toUpperCase()));
+
+    for (const [i, row] of rows.entries()) {
+      const index = i + 1;
+      const code = String(row.code ?? '')
         .trim()
-        .toUpperCase(),
-      name: String(row.name ?? '').trim(),
-      parentCode: row.parentCode
-        ? String(row.parentCode).trim().toUpperCase()
-        : undefined,
-      sortOrder: row.sortOrder ?? 0,
-      isActive: row.isActive ?? true,
-    }));
+        .toUpperCase();
+      const name = String(row.name ?? '').trim();
 
-    const existing = await this.departmentModel.find().select('_id code');
-    const codeToId = new Map(
-      existing.map((d) => [d.code.toUpperCase(), d._id.toString()]),
-    );
-
-    const pending = [...normalized];
-    let guard = pending.length + 2;
-
-    while (pending.length > 0 && guard-- > 0) {
-      let progressed = false;
-
-      for (let i = 0; i < pending.length;) {
-        const row = pending[i];
-
-        if (!row.code || !row.name) {
-          results.push({
-            row: row.index,
-            code: row.code || '(trống)',
-            status: 'error',
-            message: 'Thiếu mã hoặc tên đơn vị.',
-          });
-          pending.splice(i, 1);
-          progressed = true;
-          continue;
-        }
-
-        if (codeToId.has(row.code)) {
-          results.push({
-            row: row.index,
-            code: row.code,
-            status: 'skipped',
-            message: 'Mã đơn vị đã tồn tại.',
-          });
-          pending.splice(i, 1);
-          progressed = true;
-          continue;
-        }
-
-        if (row.parentCode && !codeToId.has(row.parentCode)) {
-          const parentStillPending = pending.some(
-            (p) => p.code === row.parentCode,
-          );
-          if (parentStillPending) {
-            i += 1;
-            continue;
-          }
-          results.push({
-            row: row.index,
-            code: row.code,
-            status: 'error',
-            message: `Không tìm thấy đơn vị cha "${row.parentCode}".`,
-          });
-          pending.splice(i, 1);
-          progressed = true;
-          continue;
-        }
-
-        try {
-          const created = await this.create({
-            code: row.code,
-            name: row.name,
-            parentId: row.parentCode ? codeToId.get(row.parentCode) : undefined,
-            sortOrder: row.sortOrder,
-            isActive: row.isActive,
-          });
-
-          const doc = created.data as DepartmentDocument;
-          codeToId.set(row.code, doc._id.toString());
-          results.push({
-            row: row.index,
-            code: row.code,
-            status: 'created',
-            message: 'Đã tạo đơn vị.',
-          });
-        } catch (error) {
-          const message =
-            error instanceof Error ? error.message : 'Lỗi không xác định.';
-          results.push({
-            row: row.index,
-            code: row.code,
-            status: 'error',
-            message,
-          });
-        }
-
-        pending.splice(i, 1);
-        progressed = true;
+      if (!code || !name) {
+        results.push({
+          row: index,
+          code: code || '(trống)',
+          status: 'error',
+          message: 'Thiếu mã hoặc tên đơn vị.',
+        });
+        continue;
+      }
+      if (codes.has(code)) {
+        results.push({
+          row: index,
+          code,
+          status: 'skipped',
+          message: 'Mã đơn vị đã tồn tại.',
+        });
+        continue;
       }
 
-      if (!progressed) {
-        for (const row of pending) {
-          results.push({
-            row: row.index,
-            code: row.code,
-            status: 'error',
-            message:
-              'Không thể resolve đơn vị cha (có thể vòng lặp phụ thuộc).',
-          });
-        }
-        break;
+      try {
+        await this.create({
+          code,
+          name,
+          sortOrder: row.sortOrder ?? 0,
+          isActive: row.isActive ?? true,
+        });
+        codes.add(code);
+        results.push({
+          row: index,
+          code,
+          status: 'created',
+          message: 'Đã tạo đơn vị.',
+        });
+      } catch (error) {
+        results.push({
+          row: index,
+          code,
+          status: 'error',
+          message:
+            error instanceof Error ? error.message : 'Lỗi không xác định.',
+        });
       }
     }
-
-    results.sort((a, b) => a.row - b.row);
 
     const summary = {
       total: rows.length,
@@ -325,50 +205,6 @@ export class DepartmentsService {
       message: `Import xong: ${summary.created} tạo mới, ${summary.skipped} bỏ qua, ${summary.errors} lỗi.`,
       data: { summary, results },
     };
-  }
-
-  private async resolveTreeFields(parentId?: string | null) {
-    if (!parentId) {
-      return {
-        parentId: null as Types.ObjectId | null,
-        ancestors: [] as Types.ObjectId[],
-        path: '/',
-        depth: 0,
-      };
-    }
-
-    if (!Types.ObjectId.isValid(parentId)) {
-      throw new BadRequestException('Mã đơn vị cha không hợp lệ.');
-    }
-
-    const parent = await this.requireDepartment(parentId);
-
-    return {
-      parentId: parent._id as Types.ObjectId,
-      ancestors: [...parent.ancestors, parent._id as Types.ObjectId],
-      path: `${parent.path}${parent._id}/`,
-      depth: parent.depth + 1,
-    };
-  }
-
-  private async rebuildDescendants(
-    department: DepartmentDocument,
-    oldIdPath: string,
-    newIdPath: string,
-  ) {
-    const descendants = await this.departmentModel.find({
-      ancestors: department._id,
-    });
-
-    for (const child of descendants) {
-      const oldAncestors = child.ancestors.map((a) => a.toString());
-      const index = oldAncestors.indexOf(department._id.toString());
-      const kept = child.ancestors.slice(index);
-      child.ancestors = [...department.ancestors, ...kept];
-      child.path = child.path.replace(oldIdPath, newIdPath);
-      child.depth = child.ancestors.length;
-      await child.save();
-    }
   }
 
   private async requireDepartment(id: string) {

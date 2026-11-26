@@ -207,7 +207,7 @@ export class SupervisionService {
     if (hasRole(roles, RoleCode.SUPER_ADMIN)) {
       return this.departmentModel
         .find({ isActive: true })
-        .sort({ depth: 1, sortOrder: 1, name: 1 })
+        .sort({ sortOrder: 1, name: 1 })
         .lean();
     }
 
@@ -230,7 +230,7 @@ export class SupervisionService {
         _id: { $in: [...ids].map((id) => new Types.ObjectId(id)) },
         isActive: true,
       })
-      .sort({ depth: 1, sortOrder: 1, name: 1 })
+      .sort({ sortOrder: 1, name: 1 })
       .lean();
   }
 }

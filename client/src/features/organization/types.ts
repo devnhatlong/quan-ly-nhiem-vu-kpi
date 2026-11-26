@@ -67,23 +67,12 @@ export type UpdateRoleInput = {
   isActive?: boolean;
 };
 
-export type DepartmentRef = {
-  _id: string;
-  id?: string;
-  code: string;
-  name: string;
-};
-
 export type Department = {
   _id: string;
   id?: string;
   code: string;
   name: string;
   slug?: string;
-  parentId?: DepartmentRef | string | null;
-  ancestors: string[];
-  path: string;
-  depth: number;
   sortOrder: number;
   isActive: boolean;
   createdAt?: string;
@@ -93,7 +82,6 @@ export type Department = {
 export type CreateDepartmentInput = {
   code: string;
   name: string;
-  parentId?: string;
   sortOrder?: number;
   isActive?: boolean;
 };
@@ -101,7 +89,6 @@ export type CreateDepartmentInput = {
 export type UpdateDepartmentInput = {
   code?: string;
   name?: string;
-  parentId?: string | null;
   sortOrder?: number;
   isActive?: boolean;
 };
@@ -109,7 +96,6 @@ export type UpdateDepartmentInput = {
 export type ImportDepartmentRow = {
   code: string;
   name: string;
-  parentCode?: string;
   sortOrder?: number;
   isActive?: boolean;
 };
@@ -214,9 +200,4 @@ export function entityId(
   if (!entity) return "";
   if (typeof entity === "string") return entity;
   return String(entity.id ?? entity._id ?? "");
-}
-
-export function parentOf(dept: Department): DepartmentRef | null {
-  if (!dept.parentId || typeof dept.parentId === "string") return null;
-  return dept.parentId;
 }

@@ -19,14 +19,6 @@ export class ImportDepartmentRowDto {
   @IsString({ message: 'Tên đơn vị phải là chuỗi.' })
   name!: string;
 
-  @ApiPropertyOptional({
-    example: 'CAT',
-    description: 'Mã đơn vị cha (để trống nếu là gốc)',
-  })
-  @IsOptional()
-  @IsString({ message: 'Mã đơn vị cha phải là chuỗi.' })
-  parentCode?: string;
-
   @ApiPropertyOptional({ example: 0 })
   @IsOptional()
   @Type(() => Number)

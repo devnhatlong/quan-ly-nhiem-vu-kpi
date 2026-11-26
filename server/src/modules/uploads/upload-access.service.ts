@@ -5,9 +5,6 @@ import { Connection, Types } from 'mongoose';
 import { RoleCode } from '@/common/enums/role-code.enum';
 import { UploadsService } from './uploads.service';
 
-/** Đi ngược cây đơn vị tối đa chừng này bậc - đủ cho tỉnh → phòng → đội → tổ. */
-const MAX_DEPARTMENT_DEPTH = 10;
-
 type UserLite = {
   _id: Types.ObjectId;
   departmentId?: Types.ObjectId | null;
@@ -22,12 +19,9 @@ type UserLite = {
  * đi theo đúng đường tệp được nhìn thấy trong nghiệp vụ:
  *
  * 1. Chính người upload, hoặc quản trị hệ thống.
- * 2. Cùng đơn vị với người upload (tài khoản đội dùng chung, tài khoản duyệt
- *    cùng đơn vị).
- * 3. Đơn vị cấp trên của đơn vị người upload (phòng đọc báo cáo đội, tỉnh đọc
- *    phòng...) - đi ngược `parentId`.
+ * 2. Cùng đơn vị với người upload.
  *
- * Nghiệp vụ mới cần mở tệp cho nơi nhận đi NGANG (ngoài cây đơn vị) thì thêm
+ * Nghiệp vụ mới cần mở tệp cho nơi nhận đi NGANG (ngoài đơn vị) thì thêm
  * luật vào `canRead`.
  *
  * Đọc thẳng collection chứ không đi qua service nghiệp vụ: module upload đứng
@@ -82,37 +76,11 @@ export class UploadAccessService {
       const uploaderDept = uploader?.departmentId
         ? String(uploader.departmentId)
         : '';
-      if (
-        uploaderDept &&
-        (await this.isSameOrAncestor(viewerDept, uploaderDept))
-      ) {
+      if (uploaderDept && uploaderDept === viewerDept) {
         return true;
       }
     }
 
-    return false;
-  }
-
-  /** `ancestorId` là chính `deptId` hoặc một đơn vị cấp trên của nó. */
-  private async isSameOrAncestor(
-    ancestorId: string,
-    deptId: string,
-  ): Promise<boolean> {
-    const departments = this.connection.collection<{
-      _id: Types.ObjectId;
-      parentId?: Types.ObjectId | null;
-    }>('departments');
-    let current: string | null = deptId;
-    for (let depth = 0; current && depth < MAX_DEPARTMENT_DEPTH; depth += 1) {
-      if (current === ancestorId) return true;
-      if (!Types.ObjectId.isValid(current)) return false;
-      const dept: { parentId?: Types.ObjectId | null } | null =
-        await departments.findOne(
-          { _id: new Types.ObjectId(current) },
-          { projection: { parentId: 1 } },
-        );
-      current = dept?.parentId ? String(dept.parentId) : null;
-    }
     return false;
   }
 }

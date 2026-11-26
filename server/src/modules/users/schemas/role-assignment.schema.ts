@@ -23,7 +23,7 @@ export class RoleAssignment {
    *   Quyền toàn hệ thống.
    *
    * ObjectId:
-   *   Quyền trong đơn vị này và các đơn vị con cháu.
+   *   Quyền trong đơn vị này.
    */
   @Prop({
     type: Types.ObjectId,

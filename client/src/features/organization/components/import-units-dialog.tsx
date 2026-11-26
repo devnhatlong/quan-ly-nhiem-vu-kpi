@@ -103,7 +103,6 @@ export function ImportUnitsDialog({
           <DialogTitle>Import đơn vị từ Excel</DialogTitle>
           <DialogDescription>
             Cột bắt buộc: <code>code</code>, <code>name</code>. Tuỳ chọn:{" "}
-            <code>parentCode</code>,{" "}
             <code>sortOrder</code>, <code>isActive</code>. Mã đã tồn tại sẽ được
             bỏ qua.
           </DialogDescription>
@@ -144,7 +143,6 @@ export function ImportUnitsDialog({
                   <TableHead className="w-12">#</TableHead>
                   <TableHead>Mã</TableHead>
                   <TableHead>Tên</TableHead>
-                  <TableHead>Cha</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -153,7 +151,6 @@ export function ImportUnitsDialog({
                     <TableCell>{i + 1}</TableCell>
                     <TableCell className="font-medium">{row.code}</TableCell>
                     <TableCell>{row.name}</TableCell>
-                    <TableCell>{row.parentCode || "-"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
