@@ -60,6 +60,13 @@ const SYSTEM_PERMISSIONS: Array<{
     description: 'Menu Tổ chức › Vai trò, Quyền: quản lý vai trò và gán quyền',
   },
   {
+    code: Permission.SUPERVISION_MANAGE,
+    name: 'Phân công phụ trách',
+    module: 'supervision',
+    sortOrder: 60,
+    description: 'Menu Tổ chức › Phân công phụ trách: chọn Phó ban phụ trách từng trợ lý',
+  },
+  {
     code: Permission.SYSTEM_CONFIG,
     name: 'Cấu hình hệ thống',
     module: 'system',

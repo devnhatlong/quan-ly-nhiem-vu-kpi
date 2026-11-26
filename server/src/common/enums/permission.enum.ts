@@ -7,5 +7,8 @@ export enum Permission {
 
   ROLE_ASSIGN = 'role.assign',
 
+  /** Chọn Phó ban phụ trách trợ lý trong Ban. */
+  SUPERVISION_MANAGE = 'supervision.manage',
+
   SYSTEM_CONFIG = 'system.config',
 }

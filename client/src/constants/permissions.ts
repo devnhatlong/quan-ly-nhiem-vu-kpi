@@ -14,6 +14,8 @@ export const PERM = {
 
   ROLE_ASSIGN: "role.assign",
 
+  SUPERVISION_MANAGE: "supervision.manage",
+
   SYSTEM_CONFIG: "system.config",
 } as const;
 

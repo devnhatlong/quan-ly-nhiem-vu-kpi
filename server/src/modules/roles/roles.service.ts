@@ -48,7 +48,7 @@ const SYSTEM_ROLES: Array<{
     sortOrder: 20,
     // Không có ROLE_ASSIGN / USER_MANAGE: quản lý tài khoản là việc của quản
     // trị hệ thống. Quyền nghiệp vụ (giao, xác nhận nhiệm vụ...) thêm sau.
-    permissions: BASE_PERMISSIONS,
+    permissions: [...BASE_PERMISSIONS, Permission.SUPERVISION_MANAGE],
   },
   {
     code: RoleCode.DEPUTY,
@@ -71,7 +71,9 @@ const SYSTEM_ROLES: Array<{
  * vào SYSTEM_ROLES ở trên chỉ có tác dụng với cơ sở dữ liệu trắng. Bản đã chạy
  * thật thì không bao giờ nhận được quyền mới nếu không có đoạn này.
  */
-const GRANTED_PERMISSIONS: Array<{ code: Permission; roles: RoleCode[] }> = [];
+const GRANTED_PERMISSIONS: Array<{ code: Permission; roles: RoleCode[] }> = [
+  { code: Permission.SUPERVISION_MANAGE, roles: [RoleCode.HEAD] },
+];
 
 @Injectable()
 export class RolesService implements OnModuleInit {

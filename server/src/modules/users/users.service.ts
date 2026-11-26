@@ -352,7 +352,16 @@ export class UsersService {
       await this.assertSuperAdminRemains([user._id]);
     }
 
+    if (
+      updateUserDto.isActive !== undefined ||
+      updateUserDto.roleAssignments !== undefined ||
+      updateUserDto.departmentId !== undefined
+    ) {
+      this.dropStaleSupervisor(user);
+    }
+
     await user.save();
+    await this.releaseSupervisedBy(user);
 
     /*
       Đặt lại mật khẩu thường là vì nghi lộ: phiên đang mở phải mất hiệu lực
@@ -436,6 +445,10 @@ export class UsersService {
     await this.assertSuperAdminRemains([user._id]);
 
     await user.deleteOne();
+    await this.userModel.updateMany(
+      { supervisorId: user._id },
+      { $set: { supervisorId: null } },
+    );
 
     return { message: 'Xóa người dùng thành công.' };
   }
@@ -465,6 +478,10 @@ export class UsersService {
     await this.assertSuperAdminRemains(objectIds);
 
     const result = await this.userModel.deleteMany({ _id: { $in: objectIds } });
+    await this.userModel.updateMany(
+      { supervisorId: { $in: objectIds } },
+      { $set: { supervisorId: null } },
+    );
     return {
       message: `Đã xoá ${result.deletedCount} người dùng.${skippedSelf ? ' Bỏ qua tài khoản đang đăng nhập.' : ''}`,
       data: { deleted: result.deletedCount, skippedSelf },
@@ -646,10 +663,42 @@ export class UsersService {
     actor: JwtPayloadUser,
     assignments: Array<{ roleCode?: string }>,
   ) {
-    if (hasSuperAdminRole(actor.role) || !hasSuperAdminRole(assignments)) return;
+    if (hasSuperAdminRole(actor.role) || !hasSuperAdminRole(assignments))
+      return;
     throw new ForbiddenException(
       'Chỉ Quản trị hệ thống mới được gán vai trò Quản trị hệ thống.',
     );
+  }
+
+  /**
+   * Trợ lý bị khoá, mất vai trò trợ lý hay chuyển đơn vị thì bỏ Phó ban phụ
+   * trách cũ - không thì luồng báo cáo lên đi tới người của đơn vị khác.
+   */
+  private dropStaleSupervisor(user: UserDocument) {
+    if (!user.supervisorId) return;
+    if (
+      user.isModified('departmentId') ||
+      !user.isActive ||
+      !user.roleAssignments.some((r) => r.roleCode === RoleCode.ASSISTANT)
+    ) {
+      user.supervisorId = null;
+    }
+  }
+
+  /**
+   * Phó ban bị khoá, mất vai trò Phó ban hay chuyển đơn vị: các trợ lý đang do
+   * người đó phụ trách về lại Trưởng ban trực tiếp.
+   */
+  private async releaseSupervisedBy(user: UserDocument) {
+    const stillDeputy =
+      user.isActive &&
+      user.roleAssignments.some((r) => r.roleCode === RoleCode.DEPUTY);
+    const filter: Record<string, unknown> = { supervisorId: user._id };
+    if (stillDeputy) {
+      // Còn là Phó ban: chỉ thả trợ lý không còn cùng đơn vị.
+      filter.departmentId = { $ne: user.departmentId ?? null };
+    }
+    await this.userModel.updateMany(filter, { $set: { supervisorId: null } });
   }
 
   /** Sau thao tác trên các tài khoản này vẫn phải còn SUPER_ADMIN hoạt động. */

@@ -5,6 +5,7 @@ import {
   Network,
   Settings,
   Shield,
+  UserCog,
   Users,
 } from "lucide-react";
 
@@ -77,6 +78,13 @@ export const NAV_ITEMS: NavItem[] = [
         href: "/organization/employees",
         icon: Users,
         permissions: [PERM.USER_VIEW],
+      },
+      {
+        // Phó ban nào phụ trách trợ lý nào - phạm vi quản lý của Phó ban.
+        title: "Phân công phụ trách",
+        href: "/organization/supervision",
+        icon: UserCog,
+        permissions: [PERM.SUPERVISION_MANAGE],
       },
     ],
   },

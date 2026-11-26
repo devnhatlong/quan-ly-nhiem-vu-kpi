@@ -48,6 +48,13 @@ export class User {
     @Prop({ type: Types.ObjectId, ref: 'Department', index: true })
     departmentId?: Types.ObjectId;
 
+    /**
+     * Phó ban phụ trách - chỉ có nghĩa với trợ lý. null = Trưởng ban trực
+     * tiếp. Chỉnh qua module supervision, không qua form sửa người dùng.
+     */
+    @Prop({ type: Types.ObjectId, ref: 'User', default: null, index: true })
+    supervisorId?: Types.ObjectId | null;
+
     /** Một người có thể kiêm nhiệm nhiều vai trò tại nhiều đơn vị. */
     @Prop({ type: [RoleAssignmentSchema], default: [] })
     roleAssignments!: RoleAssignment[];
