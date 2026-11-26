@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -22,13 +22,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  EVALUATION_LABELS,
-  PRIORITY_LABELS,
-  TYPE_LABELS,
   fetchTask,
   markPartUndone,
-  personName,
-  reviewStepText,
   submitTask,
   taskKeys,
 } from "@/features/tasks/api";
@@ -41,6 +36,7 @@ import {
 } from "@/features/tasks/components/review-dialogs";
 import { SelfReportDialog } from "@/features/tasks/components/self-report-dialog";
 import { TaskInfoCard } from "@/features/tasks/components/task-info-card";
+import { TaskStepper } from "@/features/tasks/components/task-stepper";
 import { TaskTimeline } from "@/features/tasks/components/task-timeline";
 import {
   ForwardDialog,
@@ -62,13 +58,40 @@ function when(value?: string | null) {
   return value ? serverDayjs(value).format("HH:mm DD/MM/YYYY") : "-";
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="space-y-0.5">
-      <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      <div className="text-sm">{children}</div>
-    </div>
-  );
+
+/**
+ * Màn rộng (lg): khung dòng thời gian kéo tới đáy màn hình khi cột trái ngắn
+ * hơn; cột trái dài hơn thì khung cao theo cột trái (lưới tự giãn). Gán thẳng
+ * style qua ref - không setState trong effect.
+ */
+function useFillToViewportBottom(ready: boolean) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!ready || !el) return;
+    const wide = window.matchMedia("(min-width: 1024px)");
+    const fit = () => {
+      if (!wide.matches) {
+        el.style.minHeight = "";
+        return;
+      }
+      // Vị trí so với đầu trang (không phụ thuộc đang cuộn tới đâu).
+      let top = 0;
+      for (let n: HTMLElement | null = el; n; n = n.offsetParent as HTMLElement | null) {
+        top += n.offsetTop;
+      }
+      // 16px = lề dưới của vùng nội dung (main p-4).
+      el.style.minHeight = `${Math.max(480, window.innerHeight - top - 16)}px`;
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    wide.addEventListener("change", fit);
+    return () => {
+      window.removeEventListener("resize", fit);
+      wide.removeEventListener("change", fit);
+    };
+  }, [ready]);
+  return ref;
 }
 
 export function TaskDetailView({ id }: { id: string }) {
@@ -88,6 +111,7 @@ export function TaskDetailView({ id }: { id: string }) {
     | null
   >(null);
   const [submitting, setSubmitting] = useState(false);
+  const timelineBox = useFillToViewportBottom(Boolean(data));
 
   const refresh = () => {
     void mutate();
@@ -168,9 +192,6 @@ export function TaskDetailView({ id }: { id: string }) {
           <h1 className="font-display text-xl font-semibold leading-snug tracking-tight md:text-2xl">
             {task.content || <span className="italic text-muted-foreground">(chưa có nội dung)</span>}
           </h1>
-          {task.review ? (
-            <p className="text-sm font-medium text-amber-700 dark:text-amber-400">{reviewStepText(task)}</p>
-          ) : null}
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -225,7 +246,11 @@ export function TaskDetailView({ id }: { id: string }) {
           ) : null}
           {can.review ? (
             <>
-              <Button variant="outline" className="bg-background" onClick={() => setDialog("return")}>
+              <Button
+                variant="outline"
+                className="border-destructive/40 bg-destructive/5 text-destructive hover:bg-destructive/10 hover:text-destructive dark:border-destructive/50 dark:bg-destructive/10 dark:hover:bg-destructive/20"
+                onClick={() => setDialog("return")}
+              >
                 <Undo2 className="size-4" />
                 Trả lại
               </Button>
@@ -260,74 +285,18 @@ export function TaskDetailView({ id }: { id: string }) {
         </div>
       </div>
 
-      {task.status === "RETURNED" && task.lastReturn ? (
-        <Notice tone="rose" title="Bị trả lại">
-          {task.lastReturn.reason}
-          <span className="ml-1 text-xs opacity-75">({when(task.lastReturn.at)})</span>
-        </Notice>
-      ) : null}
-      {task.status === "IN_PROGRESS" && task.lastReturn && task.reportedAt ? (
-        <Notice tone="rose" title="Báo cáo hoàn thành bị trả lại">
-          {task.lastReturn.reason}
-          <span className="ml-1 text-xs opacity-75">({when(task.lastReturn.at)})</span>
-        </Notice>
-      ) : null}
-      {(task.status === "PENDING_REVIEW" || task.status === "PENDING_CONFIRMATION") &&
-      task.lastReturn ? (
-        <Notice tone="rose" title="Lần trả lại gần nhất">
-          {task.lastReturn.reason}
-        </Notice>
-      ) : null}
       {task.status === "CANCELLED" && task.cancellation ? (
         <Notice tone="slate" title="Đã huỷ">
           {task.cancellation.reason}
           <span className="ml-1 text-xs opacity-75">({when(task.cancellation.at)})</span>
         </Notice>
-      ) : null}
-      {task.proposal &&
-      (task.status === "PENDING_REVIEW" || task.status === "PENDING_CONFIRMATION") ? (
-        <Notice tone="emerald" title="Đề xuất của Phó ban (bước 1)">
-          {[
-            task.proposal.type ? TYPE_LABELS[task.proposal.type] : "",
-            task.proposal.priority ? `ưu tiên ${PRIORITY_LABELS[task.proposal.priority].toLowerCase()}` : "",
-            task.proposal.evaluation ? EVALUATION_LABELS[task.proposal.evaluation] : "",
-          ]
-            .filter(Boolean)
-            .join(" · ")}
-        </Notice>
-      ) : null}
+      ) : (
+        <TaskStepper task={task} can={can} history={history} />
+      )}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_460px] 2xl:grid-cols-[1fr_520px]">
         <div className="min-w-0 space-y-4">
           <TaskInfoCard task={task} />
-
-          {task.reportedDone ||
-          task.result ||
-          task.resultAttachments?.length ||
-          task.status === "COMPLETED" ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Kết quả</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="whitespace-pre-line text-sm">{task.result || "-"}</p>
-                {task.resultAttachments?.length ? (
-                  <AttachmentList items={task.resultAttachments} />
-                ) : null}
-                {task.status === "COMPLETED" ? (
-                  <div className="grid gap-4 sm:grid-cols-3">
-                    <Field label="Đánh giá">
-                      <span className="font-medium">
-                        {task.evaluation ? EVALUATION_LABELS[task.evaluation] : "-"}
-                      </span>
-                    </Field>
-                    <Field label="Người xác nhận">{personName(task.confirmedById)}</Field>
-                    <Field label="Ngày hoàn thành">{when(task.completedAt)}</Field>
-                  </div>
-                ) : null}
-              </CardContent>
-            </Card>
-          ) : null}
 
           <Card>
             <CardHeader>
@@ -342,7 +311,7 @@ export function TaskDetailView({ id }: { id: string }) {
         {/* Màn rộng: khung cao đúng bằng cột thông tin bên trái (tối thiểu
             480px), dài quá thì cuộn bên trong danh sách; ô ý kiến luôn ở trên.
             Màn hẹp: xếp dưới, cao tối đa 70% màn hình. */}
-        <div className="relative min-w-0 lg:min-h-[480px]">
+        <div ref={timelineBox} className="relative min-w-0 lg:min-h-[480px]">
         <Card className="flex max-h-[70dvh] min-w-0 flex-col lg:absolute lg:inset-0 lg:max-h-none">
           <CardHeader>
             <CardTitle className="text-base">Dòng thời gian</CardTitle>

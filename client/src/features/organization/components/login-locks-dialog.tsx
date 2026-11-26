@@ -28,6 +28,7 @@ import {
   type LoginLock,
 } from "@/features/organization/api";
 import { getApiErrorMessage } from "@/lib/api-client";
+import { serverDayjs } from "@/lib/server-time";
 
 const TYPE_LABEL: Record<LoginLock["type"], string> = {
   USER_IP: "Tài khoản trên một máy",
@@ -36,7 +37,10 @@ const TYPE_LABEL: Record<LoginLock["type"], string> = {
 };
 
 function minutesLeft(iso: string) {
-  return Math.max(1, Math.ceil((new Date(iso).getTime() - Date.now()) / 60000));
+  return Math.max(
+    1,
+    Math.ceil((new Date(iso).getTime() - serverDayjs().valueOf()) / 60000),
+  );
 }
 
 /**

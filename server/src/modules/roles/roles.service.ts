@@ -21,8 +21,12 @@ import { buildPaginatedResponse } from '@/common/utils/pagination.util';
 
 const ALL_PERMISSIONS = Object.values(Permission);
 
-/** Quyền xem chung cho vai trò có chức vụ; quyền nghiệp vụ thêm sau. */
-const BASE_PERMISSIONS: string[] = [
+/**
+ * Xem danh sách Đơn vị / Người dùng toàn hệ thống là việc của quản trị hệ
+ * thống. Trưởng ban chỉ thấy người trong Ban mình qua trang Phân công phụ
+ * trách (người dùng yêu cầu 2026-11-26).
+ */
+const ORG_VIEW_PERMISSIONS: string[] = [
   Permission.USER_VIEW,
   Permission.DEPARTMENT_VIEW,
 ];
@@ -46,7 +50,6 @@ const SYSTEM_ROLES: Array<{
     // Không có ROLE_ASSIGN / USER_MANAGE: quản lý tài khoản là việc của quản
     // trị hệ thống. Quyền nghiệp vụ (giao, xác nhận nhiệm vụ...) thêm sau.
     permissions: [
-      ...BASE_PERMISSIONS,
       Permission.SUPERVISION_MANAGE,
       Permission.TASK_VIEW,
       Permission.TASK_ASSIGN,
@@ -58,7 +61,6 @@ const SYSTEM_ROLES: Array<{
     name: 'Phó ban',
     sortOrder: 30,
     permissions: [
-      ...BASE_PERMISSIONS,
       Permission.TASK_VIEW,
       Permission.TASK_ASSIGN,
       Permission.TASK_SELF_REPORT,
@@ -94,6 +96,23 @@ const GRANTED_PERMISSIONS: Array<{ code: Permission; roles: RoleCode[] }> = [
   { code: Permission.TASK_REVIEW, roles: [RoleCode.HEAD, RoleCode.DEPUTY] },
 ];
 
+/**
+ * Quyền GỠ khỏi vai trò hệ thống đã có trong CSDL - mỗi mục chạy đúng MỘT lần
+ * (đánh dấu theo `key` trong `app_migrations`), để quản trị viên cấp lại sau
+ * đó thì lần khởi động sau không gỡ mất.
+ */
+const REVOKED_PERMISSIONS: Array<{
+  key: string;
+  codes: string[];
+  roles: RoleCode[];
+}> = [
+  {
+    key: 'revoke-org-view-head-deputy-2026-11-26',
+    codes: ORG_VIEW_PERMISSIONS,
+    roles: [RoleCode.HEAD, RoleCode.DEPUTY],
+  },
+];
+
 @Injectable()
 export class RolesService implements OnModuleInit {
   constructor(
@@ -107,6 +126,21 @@ export class RolesService implements OnModuleInit {
     await this.retireOldSystemRoles();
     await this.seedSystemRoles();
     await this.grantNewSystemPermissions();
+    await this.revokeSystemPermissionsOnce();
+  }
+
+  private async revokeSystemPermissionsOnce() {
+    const done = this.roleModel.db.collection<{ _id: string; at: Date }>(
+      'app_migrations',
+    );
+    for (const item of REVOKED_PERMISSIONS) {
+      if (await done.findOne({ _id: item.key })) continue;
+      await this.roleModel.updateMany(
+        { code: { $in: item.roles }, isSystem: true },
+        { $pull: { permissions: { $in: item.codes } } },
+      );
+      await done.insertOne({ _id: item.key, at: new Date() });
+    }
   }
 
   /**

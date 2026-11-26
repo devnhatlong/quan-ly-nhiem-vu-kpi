@@ -88,10 +88,13 @@ export const NAV_ITEMS: NavItem[] = [
       },
       {
         // Phó ban nào phụ trách trợ lý nào - phạm vi quản lý của Phó ban.
+        // Việc của Trưởng ban trong Ban mình; quản trị hệ thống (không thuộc
+        // Ban nào) chỉ quản lý Đơn vị, Người dùng.
         title: "Phân công phụ trách",
         href: "/organization/supervision",
         icon: UserCog,
         permissions: [PERM.SUPERVISION_MANAGE],
+        roles: ["HEAD"],
       },
     ],
   },

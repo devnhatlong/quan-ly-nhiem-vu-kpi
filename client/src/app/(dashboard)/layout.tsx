@@ -26,8 +26,9 @@ export default function DashboardLayout({
       <RequireAuth>
         <RequirePasswordChange>
           <RestrictRoutesByPermission>
-            <ServerTimeSync />
-            <DashboardShell>{children}</DashboardShell>
+            <ServerTimeSync>
+              <DashboardShell>{children}</DashboardShell>
+            </ServerTimeSync>
           </RestrictRoutesByPermission>
         </RequirePasswordChange>
       </RequireAuth>

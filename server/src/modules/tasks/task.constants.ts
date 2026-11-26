@@ -97,4 +97,4 @@ export type HistoryAction = (typeof HISTORY_ACTIONS)[number];
 /** Ngày nghiệp vụ dạng YYYY-MM-DD - tránh lệch múi giờ khi lưu Date. */
 export const YMD_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-export const BUSINESS_TIMEZONE = 'Asia/Ho_Chi_Minh';
+export { BUSINESS_TIMEZONE } from '@/common/constants/time.constants';

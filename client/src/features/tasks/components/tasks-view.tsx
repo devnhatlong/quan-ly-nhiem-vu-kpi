@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -54,6 +55,7 @@ import { useListPagination } from "@/hooks/use-list-pagination";
 import { getApiErrorMessage } from "@/lib/api-client";
 import { emptyPaginationMeta, rowIndex } from "@/lib/pagination";
 import { formatYmd } from "@/lib/server-time";
+import { cn } from "@/lib/utils";
 
 const ALL_STATUSES = "__all__";
 const VIEWS: TaskView[] = ["mine", "assigned", "review", "all"];
@@ -206,7 +208,7 @@ export function TasksView() {
                   <TableHead>Nội dung</TableHead>
                   <TableHead className="w-52">Chủ trì</TableHead>
                   <TableHead className="w-28">Hạn</TableHead>
-                  <TableHead className="w-20 text-right">Tiến độ</TableHead>
+                  <TableHead className="w-40">Tiến độ</TableHead>
                   <TableHead className="w-52 pr-4">Trạng thái</TableHead>
                 </TableRow>
               </TableHeader>
@@ -265,8 +267,20 @@ export function TasksView() {
                       <TableCell className="align-top text-sm tabular-nums">
                         {task.dueDate ? formatYmd(task.dueDate) : "-"}
                       </TableCell>
-                      <TableCell className="align-top text-right text-sm tabular-nums">
-                        {task.progress}%
+                      <TableCell className="align-top">
+                        <div className="flex items-center gap-2">
+                          <Progress
+                            value={task.progress}
+                            aria-label={`Tiến độ ${task.progress}%`}
+                            className={cn(
+                              "h-2 flex-1",
+                              task.status === "COMPLETED" && "[&>*]:bg-emerald-500",
+                            )}
+                          />
+                          <span className="w-9 shrink-0 text-right text-xs font-medium tabular-nums">
+                            {task.progress}%
+                          </span>
+                        </div>
                       </TableCell>
                       <TableCell className="pr-4 align-top">
                         <div className="flex flex-wrap items-center gap-1">

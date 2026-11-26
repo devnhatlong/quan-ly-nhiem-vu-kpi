@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { ServerYear } from "@/components/common/server-year";
 import { APP_LOGO, APP_NAME } from "@/constants/app";
 import { LoginForm } from "@/features/auth/components/LoginForm";
 
@@ -88,7 +89,7 @@ export default function LoginPage() {
         </div>
 
         <div className="relative text-sm text-white/70">
-          © {new Date().getFullYear()}
+          © <ServerYear />
         </div>
       </aside>
 

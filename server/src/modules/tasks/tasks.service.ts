@@ -578,7 +578,11 @@ export class TasksService {
       updated,
       actor,
       'SUBMITTED',
-      noteLines([from === 'RETURNED' ? 'Gửi lại tới' : 'Gửi tới', target]),
+      noteLines(
+        [from === 'RETURNED' ? 'Gửi lại tới' : 'Gửi tới', target],
+        ['Tình trạng', updated.reportedDone ? 'Đã làm xong' : 'Đang thực hiện'],
+        ['Kết quả', updated.reportedDone ? updated.result : ''],
+      ),
     );
     await this.notifyReviewers(
       updated,
